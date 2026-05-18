@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: always
+    environment:
+      POSTGRES_USER: drapeai
+      POSTGRES_PASSWORD: drapeai
+      POSTGRES_DB: drapeai
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+      - ../api/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+
+  api:
+    build: ../api
+    restart: always
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql://drapeai:drapeai@db:5432/drapeai
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../api:/app
+      - uploads_dev:/app/uploads
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata_dev:
+  uploads_dev:

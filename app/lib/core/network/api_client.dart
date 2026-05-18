@@ -1,0 +1,175 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'dio_provider.dart';
+
+final apiClientProvider = Provider<ApiClient>((ref) {
+  return ApiClient(ref.watch(dioProvider));
+});
+
+class ApiClient {
+  final Dio _dio;
+  ApiClient(this._dio);
+
+  // --- Auth ---
+  Future<Map<String, dynamic>> verifyAuth() async {
+    final resp = await _dio.post('/auth/verify');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  // --- User ---
+  Future<Map<String, dynamic>> getMe() async {
+    final resp = await _dio.get('/me');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<void> updateMe(Map<String, dynamic> data) async {
+    await _dio.patch('/me', data: data);
+  }
+
+  // --- Preferences ---
+  Future<void> savePreferences(Map<String, dynamic> prefs) async {
+    await _dio.put('/me/preferences', data: prefs);
+  }
+
+  Future<Map<String, dynamic>> getPreferences() async {
+    final resp = await _dio.get('/me/preferences');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  // --- Items ---
+  Future<Map<String, dynamic>> uploadItem(String filePath) async {
+    final formData = FormData.fromMap({
+      'image': await MultipartFile.fromFile(filePath),
+    });
+    final resp = await _dio.post(
+      '/items/upload',
+      data: formData,
+      options: Options(receiveTimeout: const Duration(minutes: 2)),
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getItems({
+    String? category,
+    String? color,
+    String? search,
+    String sort = 'newest',
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final resp = await _dio.get('/items', queryParameters: {
+      if (category != null) 'category': category,
+      if (color != null) 'color': color,
+      if (search != null && search.isNotEmpty) 'search': search,
+      'sort': sort,
+      'limit': limit,
+      'offset': offset,
+    });
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getItem(String id) async {
+    final resp = await _dio.get('/items/$id');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<void> updateItem(String id, Map<String, dynamic> updates) async {
+    await _dio.patch('/items/$id', data: updates);
+  }
+
+  Future<void> deleteItem(String id) async {
+    await _dio.delete('/items/$id');
+  }
+
+  // --- Outfits ---
+  Future<Map<String, dynamic>> generateOutfits(String occasion) async {
+    final resp = await _dio.post(
+      '/outfits/generate',
+      data: {'occasion': occasion},
+      options: Options(receiveTimeout: const Duration(minutes: 2)),
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> shuffleOutfit(String occasion) async {
+    final resp = await _dio.post('/outfits/shuffle', data: {'occasion': occasion});
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<void> submitFeedback(String outfitId, String action) async {
+    await _dio.post('/outfits/$outfitId/feedback', data: {'action': action});
+  }
+
+  Future<Map<String, dynamic>> getTodayOutfits() async {
+    final resp = await _dio.get('/outfits/today');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  // --- Lookbooks ---
+  Future<Map<String, dynamic>> getLookbooks() async {
+    final resp = await _dio.get('/lookbooks');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createLookbook(String name) async {
+    final resp = await _dio.post('/lookbooks', data: {'name': name});
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getLookbook(String id) async {
+    final resp = await _dio.get('/lookbooks/$id');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<void> saveOutfitToLookbook(String lookbookId, String outfitId) async {
+    await _dio.post('/lookbooks/$lookbookId/outfits/$outfitId');
+  }
+
+  Future<void> removeOutfitFromLookbook(
+      String lookbookId, String outfitId) async {
+    await _dio.delete('/lookbooks/$lookbookId/outfits/$outfitId');
+  }
+
+  Future<void> renameLookbook(String id, String name) async {
+    await _dio.patch('/lookbooks/$id', data: {'name': name});
+  }
+
+  Future<void> deleteLookbook(String id) async {
+    await _dio.delete('/lookbooks/$id');
+  }
+
+  // --- Outfit chat refinement ---
+  Future<Map<String, dynamic>> refineOutfit(
+      String outfitId, String message) async {
+    final resp = await _dio.post(
+      '/outfits/$outfitId/refine',
+      data: {'message': message},
+      options: Options(receiveTimeout: const Duration(minutes: 1)),
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
+  // --- Item pairings ---
+  Future<Map<String, dynamic>> getPairings(String itemId,
+      {int limit = 5}) async {
+    final resp = await _dio.get('/items/$itemId/pairings',
+        queryParameters: {'limit': limit});
+    return resp.data as Map<String, dynamic>;
+  }
+
+  // --- Wardrobe gap analysis ---
+  Future<Map<String, dynamic>> getWardrobeGaps() async {
+    final resp = await _dio.get(
+      '/wardrobe/gaps',
+      options: Options(receiveTimeout: const Duration(seconds: 30)),
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
+  // --- Push ---
+  Future<void> registerPushToken(String token, String platform) async {
+    await _dio.post(
+        '/push/register', data: {'token': token, 'platform': platform});
+  }
+}

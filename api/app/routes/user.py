@@ -1,0 +1,71 @@
+"""User profile and preferences routes."""
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.auth.dependencies import get_current_user
+from app.database.pool import get_pool
+from app.database.queries.preferences import upsert_preferences, get_preferences
+from app.models.user import User
+from app.models.preferences import PreferencesInput, PreferencesResponse
+
+router = APIRouter(tags=["User"])
+
+
+@router.get("/me")
+async def get_profile(user: User = Depends(get_current_user)):
+    return {
+        "id": user.id,
+        "display_name": user.display_name,
+        "email": user.email,
+        "phone": user.phone,
+        "photo_url": user.photo_url,
+        "onboarding_done": user.onboarding_done,
+    }
+
+
+@router.patch("/me")
+async def update_profile(
+    updates: dict,
+    user: User = Depends(get_current_user),
+):
+    allowed = {"display_name", "photo_url"}
+    filtered = {k: v for k, v in updates.items() if k in allowed}
+    if not filtered:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        set_clause = ", ".join(f"{k} = ${i + 2}" for i, k in enumerate(filtered))
+        values = [user.id] + list(filtered.values())
+        await conn.execute(
+            f"UPDATE users SET {set_clause} WHERE id = $1",
+            *values,
+        )
+    return {"updated": True}
+
+
+@router.put("/me/preferences")
+async def save_preferences(
+    prefs: PreferencesInput,
+    user: User = Depends(get_current_user),
+):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await upsert_preferences(conn, user.id, prefs.model_dump())
+        await conn.execute(
+            "UPDATE users SET onboarding_done = true WHERE id = $1", user.id
+        )
+    return PreferencesResponse(**result)
+
+
+@router.get("/me/preferences")
+async def get_user_preferences(user: User = Depends(get_current_user)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        prefs = await get_preferences(conn, user.id)
+    if not prefs:
+        raise HTTPException(
+            status_code=404,
+            detail="Preferences not set. Complete onboarding first.",
+        )
+    return PreferencesResponse(**prefs)

@@ -1,0 +1,52 @@
+name: drapeai
+description: AI-powered personal stylist
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.5.0
+
+  # Navigation
+  go_router: ^14.0.0
+
+  # Network
+  dio: ^5.5.0
+
+  # Firebase
+  firebase_core: ^3.3.0
+  firebase_auth: ^5.1.0
+  firebase_messaging: ^15.0.0
+  google_sign_in: ^6.2.0
+
+  # UI
+  google_fonts: ^6.2.0
+  cached_network_image: ^3.4.0
+  shimmer: ^3.0.0
+
+  # Camera / images
+  image_picker: ^1.1.0
+  camera: ^0.11.0
+
+  # Storage
+  shared_preferences: ^2.3.0
+  path_provider: ^2.1.0
+
+  # Utils
+  intl: ^0.19.0
+  url_launcher: ^6.3.0
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
