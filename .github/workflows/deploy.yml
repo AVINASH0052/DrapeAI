@@ -1,0 +1,51 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'infra/**'
+
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /opt/drapeai
+            git pull origin main
+
+            # Run migrations
+            for f in api/db/migrations/*.sql; do
+              echo "Running migration: $f"
+              sudo -u postgres psql -d drapeai -f "$f" 2>&1 || true
+            done
+
+            # Rebuild and restart
+            docker compose -f infra/docker-compose.prod.yml build api
+            docker compose -f infra/docker-compose.prod.yml up -d api
+
+            # Verify health
+            sleep 5
+            curl -sf http://localhost:8000/health || exit 1
+            echo "Deploy successful!"
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "::error::Deployment failed! Check server logs."

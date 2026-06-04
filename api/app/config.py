@@ -64,8 +64,7 @@ class Settings(BaseSettings):
     # Sentry
     sentry_dsn: str = ""
 
-    # OpenWeather (for weather-based outfit suggestions)
-    openweather_api_key: str = ""
+    # Weather: uses Open-Meteo (free, no API key required)
 
     # Server
     host: str = "0.0.0.0"

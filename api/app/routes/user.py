@@ -69,3 +69,12 @@ async def get_user_preferences(user: User = Depends(get_current_user)):
             detail="Preferences not set. Complete onboarding first.",
         )
     return PreferencesResponse(**prefs)
+
+
+@router.delete("/me")
+async def delete_account(user: User = Depends(get_current_user)):
+    """Hard-delete the user account. CASCADE removes all related data."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM users WHERE id = $1", user.id)
+    return {"deleted": True}

@@ -49,7 +49,7 @@ async def get_pairings(
 ) -> list[dict]:
     """Return top-N wardrobe items that pair with the given item."""
     base = await conn.fetchrow(
-        "SELECT * FROM items WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL",
+        "SELECT * FROM items WHERE id = $1 AND user_id = $2 AND is_active = TRUE",
         item_id, user_id,
     )
     if not base:

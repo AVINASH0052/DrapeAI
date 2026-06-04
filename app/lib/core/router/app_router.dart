@@ -15,6 +15,8 @@ import '../../features/outfits/presentation/shuffle_screen.dart';
 import '../../features/lookbooks/presentation/lookbooks_screen.dart';
 import '../../features/lookbooks/presentation/lookbook_detail_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/profile/presentation/about_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
 import '../shell/main_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -125,6 +127,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/wardrobe-gaps',
         name: 'wardrobe_gaps',
         builder: (_, __) => const GapsScreen(),
+      ),
+      GoRoute(
+        path: '/about',
+        name: 'about',
+        builder: (_, __) => const AboutScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        builder: (_, __) => const NotificationsScreen(),
       ),
     ],
   );

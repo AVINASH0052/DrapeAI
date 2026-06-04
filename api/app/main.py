@@ -10,7 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database.pool import init_pool, close_pool
-from app.routes import health, auth, user, items, outfits, lookbooks, demo, push, wardrobe
+from app.routes import health, auth, user, items, outfits, lookbooks, demo, push, wardrobe, admin, stats, weather_route, notifications
+from app.services.demo_wardrobe import seed_demo_wardrobe
 
 logging.basicConfig(
     level=settings.log_level,
@@ -25,6 +26,20 @@ if settings.environment == "production" and settings.sentry_dsn:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_pool()
+    # Seed demo wardrobe (idempotent — skips if already seeded)
+    try:
+        from app.database.pool import get_pool
+        pool = await get_pool()
+        # Ensure the demo user exists
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """INSERT INTO users (id, display_name, onboarding_done)
+                   VALUES ('demo-user', 'Demo User', TRUE)
+                   ON CONFLICT (id) DO NOTHING""",
+            )
+        await seed_demo_wardrobe()
+    except Exception as e:
+        logger.warning(f"Demo wardrobe seeding skipped: {e}")
     logger.info("DrapeAI backend started")
     yield
     await close_pool()
@@ -50,6 +65,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Rate limiting (in-memory, per-user sliding window)
+from app.middleware.rate_limiter import RateLimitMiddleware
+
+app.add_middleware(RateLimitMiddleware)
+
+# Security headers, request ID, body size limit
+from app.middleware.security import SecurityMiddleware
+
+app.add_middleware(SecurityMiddleware)
+
 # Serve local uploads in dev mode
 if settings.environment == "development":
     from fastapi.staticfiles import StaticFiles
@@ -68,3 +93,7 @@ app.include_router(lookbooks.router)
 app.include_router(demo.router)
 app.include_router(push.router)
 app.include_router(wardrobe.router)
+app.include_router(admin.router)
+app.include_router(stats.router)
+app.include_router(weather_route.router)
+app.include_router(notifications.router)

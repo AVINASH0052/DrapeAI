@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/network/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../providers/profile_stats_provider.dart';
+import '../widgets/edit_profile_sheet.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -17,8 +22,76 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _notificationsOn = true;
 
+  Future<void> _openEditProfile() async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => const EditProfileSheet(currentName: 'Avinash'),
+    );
+    if (result == true) {
+      ref.invalidate(profileStatsProvider);
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14)),
+        title: Text('Delete your account?',
+            style: GoogleFonts.instrumentSerif(
+              fontSize: 20, color: AppColors.ink)),
+        content: Text(
+          'This cannot be undone. All your wardrobe items, '
+          'outfits, and data will be permanently removed.',
+          style: AppTypography.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel',
+                style: AppTypography.button
+                    .copyWith(color: AppColors.ink2)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Delete',
+                style:
+                    AppTypography.button.copyWith(color: AppColors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final api = ref.read(apiClientProvider);
+      await api.deleteMe();
+    } catch (_) {
+      // Best-effort — still log out locally
+    }
+    if (!mounted) return;
+    ref.read(authStatusProvider.notifier).logout();
+    context.go('/login');
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final statsAsync = ref.watch(profileStatsProvider);
+
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -38,7 +111,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         )),
                   ),
                   GestureDetector(
-                    onTap: () {},
+                    onTap: _openEditProfile,
                     child: Container(
                       width: 36, height: 36,
                       decoration: BoxDecoration(
@@ -159,7 +232,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
 
-            // Wardrobe stats
+            // Wardrobe stats — live from API
             _SectionHead('Wardrobe'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -170,12 +243,52 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   border: Border.all(color: AppColors.border),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Row(
-                  children: const [
-                    _StatBlock(value: '24', label: 'Items'),
-                    _StatBlock(value: '18', label: 'Saved'),
-                    _StatBlock(value: '73%', label: 'In rotation'),
-                  ],
+                child: statsAsync.when(
+                  loading: () => Row(
+                    children: List.generate(3, (_) => Expanded(
+                      child: Shimmer.fromColors(
+                        baseColor: AppColors.border,
+                        highlightColor: AppColors.bgWarm,
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 36, height: 28,
+                              decoration: BoxDecoration(
+                                color: AppColors.card,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              width: 48, height: 12,
+                              decoration: BoxDecoration(
+                                color: AppColors.card,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )),
+                  ),
+                  error: (_, __) => Row(
+                    children: const [
+                      _StatBlock(value: '—', label: 'Items'),
+                      _StatBlock(value: '—', label: 'Saved'),
+                      _StatBlock(value: '—', label: 'In rotation'),
+                    ],
+                  ),
+                  data: (stats) => Row(
+                    children: [
+                      _StatBlock(
+                          value: '${stats.totalItems}', label: 'Items'),
+                      _StatBlock(
+                          value: '${stats.savedOutfits}', label: 'Saved'),
+                      _StatBlock(
+                          value: '${stats.utilizationPct}%',
+                          label: 'In rotation'),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -284,11 +397,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           style: AppTypography.caption
                               .copyWith(color: AppColors.ink2)),
                     ),
-                    _SettingRow(
-                      label: 'About drape.ai',
-                      trailing: const Icon(Icons.chevron_right,
-                          size: 16, color: AppColors.ink3),
-                      last: true,
+                    GestureDetector(
+                      onTap: () => context.push('/about'),
+                      child: _SettingRow(
+                        label: 'About drape.ai',
+                        trailing: const Icon(Icons.chevron_right,
+                            size: 16, color: AppColors.ink3),
+                        last: true,
+                      ),
                     ),
                   ],
                 ),
@@ -306,17 +422,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
-                  children: const [
-                    _SettingRow(
-                      label: 'Terms & Privacy',
-                      trailing: Icon(Icons.chevron_right,
-                          size: 16, color: AppColors.ink3),
+                  children: [
+                    GestureDetector(
+                      onTap: () =>
+                          _launchUrl('https://drapeai.app/terms'),
+                      child: const _SettingRow(
+                        label: 'Terms & Privacy',
+                        trailing: Icon(Icons.chevron_right,
+                            size: 16, color: AppColors.ink3),
+                      ),
                     ),
-                    _SettingRow(
-                      label: 'Help & feedback',
-                      trailing: Icon(Icons.chevron_right,
-                          size: 16, color: AppColors.ink3),
-                      last: true,
+                    GestureDetector(
+                      onTap: () =>
+                          _launchUrl('mailto:help@drapeai.app'),
+                      child: const _SettingRow(
+                        label: 'Help & feedback',
+                        trailing: Icon(Icons.chevron_right,
+                            size: 16, color: AppColors.ink3),
+                        last: true,
+                      ),
                     ),
                   ],
                 ),
@@ -344,7 +468,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   SizedBox(
                     width: double.infinity, height: 50,
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: _deleteAccount,
                       child: Text('Delete account',
                           style: AppTypography.button
                               .copyWith(color: AppColors.red)),

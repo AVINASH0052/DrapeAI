@@ -28,7 +28,7 @@ def _summarize_wardrobe(items: list[dict]) -> dict:
     total = 0
 
     for it in items:
-        if it.get("deleted_at"):
+        if not it.get("is_active", True):
             continue
         total += 1
         cat_count[it.get("category") or "unknown"] += 1

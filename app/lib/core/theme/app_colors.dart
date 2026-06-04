@@ -60,3 +60,44 @@ class AppColors {
   static const indigo500 = orange;
   static const indigo50 = orangeSoft;
 }
+
+/// Dark mode color palette.
+class AppColorsDark {
+  AppColorsDark._();
+
+  // Surfaces
+  static const bg = Color(0xFF121110);
+  static const bgWarm = Color(0xFF1A1918);
+  static const card = Color(0xFF1E1D1C);
+  static const border = Color(0xFF2E2C2A);
+  static const borderStrong = Color(0xFF3D3A37);
+
+  // Ink (text — inverted hierarchy for dark mode)
+  static const ink = Color(0xFFF5F3F0);
+  static const ink2 = Color(0xFFB5B0A8);
+  static const ink3 = Color(0xFF7A756D);
+  static const ink4 = Color(0xFF4A4640);
+
+  // Orange accent (slightly brighter for dark backgrounds)
+  static const orange = Color(0xFFFB923C);
+  static const orangeSoft = Color(0xFF2D1D0E);
+
+  // Accent soft tones for dark mode
+  static const pinkSoft = Color(0xFF2D1424);
+  static const limeSoft = Color(0xFF1A2D0E);
+  static const lavenderSoft = Color(0xFF1E1630);
+
+  // Semantic
+  static const red = Color(0xFFF43F5E);
+  static const red50 = Color(0xFF2D1418);
+  static const green500 = Color(0xFF34D399);
+  static const green50 = Color(0xFF0D2D1E);
+  static const amber500 = Color(0xFFFBBF24);
+  static const amber50 = Color(0xFF2D2410);
+
+  // Gray aliases (dark variants)
+  static const gray900 = ink;
+  static const gray100 = Color(0xFF252321);
+  static const gray50 = Color(0xFF1A1918);
+}
+

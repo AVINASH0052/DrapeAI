@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../providers/today_provider.dart';
+import '../providers/weather_provider.dart';
 import '../widgets/outfit_card.dart';
 
 class TodayScreen extends ConsumerStatefulWidget {
@@ -71,8 +73,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                               color: AppColors.ink,
                             )),
                         const SizedBox(height: 2),
-                        Text('Mumbai · light breeze, 28°',
-                            style: AppTypography.caption),
+                        _WeatherLine(),
                       ],
                     ),
                   ),
@@ -212,6 +213,32 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _WeatherLine extends ConsumerWidget {
+  const _WeatherLine();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final weatherAsync = ref.watch(weatherProvider);
+    return weatherAsync.when(
+      loading: () => Shimmer.fromColors(
+        baseColor: AppColors.border,
+        highlightColor: AppColors.bgWarm,
+        child: Container(
+          width: 140, height: 12,
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+      ),
+      error: (_, __) => Text('Weather unavailable',
+          style: AppTypography.caption),
+      data: (weather) => Text(weather.display,
+          style: AppTypography.caption),
     );
   }
 }

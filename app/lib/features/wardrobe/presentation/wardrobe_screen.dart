@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../notifications/providers/notifications_provider.dart';
 import '../providers/wardrobe_provider.dart';
 import '../widgets/item_card.dart';
 
@@ -48,7 +49,7 @@ class WardrobeScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  _IconBtn(icon: Icons.notifications_outlined, onTap: () {}),
+                  _NotificationBell(ref: ref),
                 ],
               ),
             ),
@@ -262,3 +263,56 @@ class _WardrobeSearchDelegate extends SearchDelegate<String> {
   @override
   Widget buildSuggestions(BuildContext context) => const SizedBox.shrink();
 }
+
+class _NotificationBell extends StatelessWidget {
+  final WidgetRef ref;
+  const _NotificationBell({required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    final unreadAsync = ref.watch(unreadCountProvider);
+    final count = unreadAsync.valueOrNull ?? 0;
+
+    return GestureDetector(
+      onTap: () => context.pushNamed('notifications'),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Icon(Icons.notifications_outlined,
+                size: 20, color: AppColors.ink),
+            if (count > 0)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: const BoxDecoration(
+                    color: AppColors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    count > 9 ? '9+' : '$count',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

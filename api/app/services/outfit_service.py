@@ -13,6 +13,7 @@ from app.services.llm_ranker import rank_outfits
 from app.services.personalization import get_recent_feedback
 from app.services.weather import get_weather
 from app.services.storage import get_image_url
+from app.utils.cost_tracker import check_budget
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,11 @@ async def generate_outfits(
     if not candidates:
         return {"outfits": [], "cached": False}
 
-    # 5. LLM ranker (personalized with feedback)
+    # 5. Check budget before LLM call
+    await check_budget("openai")
+    await check_budget("anthropic")
+
+    # 6. LLM ranker (personalized with feedback)
     ranked = await rank_outfits(candidates, prefs, occasion, weather, feedback=feedback)
 
     # 6. Save to DB and format response

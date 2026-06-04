@@ -25,17 +25,17 @@ async def get_gaps(user: User = Depends(get_current_user)):
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT * FROM items WHERE user_id = $1",
+            "SELECT * FROM items WHERE user_id = $1 AND is_active = TRUE",
             user.id,
         )
         items = [dict(r) for r in rows]
         prefs = await get_preferences(conn, user.id) or {}
 
-    if len(items) < 1:
-        return {
-            "gaps": [],
-            "message": "Add some items to your wardrobe first.",
-        }
+        if len(items) < 1:
+            return {
+                "gaps": [],
+                "message": "Add some items to your wardrobe first.",
+            }
 
-    gaps = await analyze_wardrobe_gaps(conn, user.id, items, prefs)
+        gaps = await analyze_wardrobe_gaps(conn, user.id, items, prefs)
     return {"gaps": gaps, "total_items": len(items)}

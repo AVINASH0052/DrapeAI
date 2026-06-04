@@ -167,6 +167,24 @@ class ApiClient {
     return resp.data as Map<String, dynamic>;
   }
 
+  // --- User stats ---
+  Future<Map<String, dynamic>> getProfileStats() async {
+    final resp = await _dio.get('/me/stats');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<void> deleteMe() async {
+    await _dio.delete('/me');
+  }
+
+  // --- Weather ---
+  Future<Map<String, dynamic>> getWeather({String? city}) async {
+    final resp = await _dio.get('/weather', queryParameters: {
+      if (city != null) 'city': city,
+    });
+    return resp.data as Map<String, dynamic>;
+  }
+
   // --- Push ---
   Future<void> registerPushToken(String token, String platform) async {
     await _dio.post(

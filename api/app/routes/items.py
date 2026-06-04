@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Query
 
 from app.auth.dependencies import get_current_user
 from app.database.pool import get_pool
@@ -72,6 +72,7 @@ async def get_single_item(item_id: str, user: User = Depends(get_current_user)):
 async def update_single_item(
     item_id: str,
     updates: ItemUpdate,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
 ):
     pool = await get_pool()
@@ -92,9 +93,8 @@ async def update_single_item(
     # Re-generate embedding if descriptive tags changed
     if updates.category or updates.primary_color:
         from app.services.upload_pipeline import regenerate_embedding
-        import asyncio
 
-        asyncio.create_task(regenerate_embedding(item_id))
+        background_tasks.add_task(regenerate_embedding, item_id)
 
     item["image_url"] = get_image_url(item["image_url"])
     return item
