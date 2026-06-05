@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS users (
     display_name    TEXT,
     photo_url       TEXT,
     onboarding_done BOOLEAN NOT NULL DEFAULT FALSE,
+    is_admin        BOOLEAN NOT NULL DEFAULT FALSE,
+    is_suspended    BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
     last_login_at   TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -32,6 +35,11 @@ CREATE TABLE IF NOT EXISTS preferences (
     age_range           TEXT NOT NULL,
     style_goals         TEXT NOT NULL,          -- JSON array
     color_preferences   TEXT NOT NULL,          -- JSON array
+    body_type           TEXT,
+    skin_tone           TEXT,
+    budget_range        TEXT,
+    preferred_brands    TEXT NOT NULL DEFAULT '[]',  -- JSON array
+    avoid_colors        TEXT NOT NULL DEFAULT '[]',  -- JSON array
     location_city       TEXT NOT NULL,
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -52,17 +60,17 @@ CREATE TABLE IF NOT EXISTS items (
     category         TEXT NOT NULL,
     sub_category     TEXT NOT NULL DEFAULT '',
     primary_color    TEXT NOT NULL,
-    secondary_colors TEXT NOT NULL DEFAULT '[]',  -- JSON array
+    secondary_colors JSONB NOT NULL DEFAULT '[]'::jsonb,
     pattern          TEXT NOT NULL DEFAULT 'solid',
     fabric           TEXT NOT NULL DEFAULT 'cotton',
-    style_tags       TEXT NOT NULL DEFAULT '[]',  -- JSON array
+    style_tags       JSONB NOT NULL DEFAULT '[]'::jsonb,
     formality        SMALLINT NOT NULL DEFAULT 3 CHECK (formality BETWEEN 1 AND 5),
-    season_tags      TEXT NOT NULL DEFAULT '["all_season"]',  -- JSON array
+    season_tags      JSONB NOT NULL DEFAULT '["all_season"]'::jsonb,
     ethnic_flag      BOOLEAN NOT NULL DEFAULT FALSE,
     confidence       REAL NOT NULL DEFAULT 0.0,
 
-    -- Vector embedding
-    embedding        vector(1536),
+    -- Vector embedding (1024-dim: NVIDIA NIM / text-embedding-3-small)
+    embedding        vector(1024),
 
     -- User metadata
     brand            TEXT,
@@ -88,6 +96,11 @@ CREATE INDEX IF NOT EXISTS idx_items_user_active ON items(user_id) WHERE is_acti
 CREATE INDEX IF NOT EXISTS idx_items_embedding
     ON items USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
+-- GIN indexes for JSONB containment queries (@>)
+CREATE INDEX IF NOT EXISTS idx_items_style_tags ON items USING gin(style_tags);
+CREATE INDEX IF NOT EXISTS idx_items_season_tags ON items USING gin(season_tags);
+CREATE INDEX IF NOT EXISTS idx_items_secondary_colors ON items USING gin(secondary_colors);
+
 -- ============================================================
 -- outfits
 -- ============================================================
@@ -105,12 +118,14 @@ CREATE TABLE IF NOT EXISTS outfits (
     llm_reason      TEXT,
     is_saved        BOOLEAN NOT NULL DEFAULT FALSE,
     is_worn         BOOLEAN NOT NULL DEFAULT FALSE,
+    worn_date       DATE,                       -- Calendar: date the outfit was worn/planned
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_outfits_user_id ON outfits(user_id);
 CREATE INDEX IF NOT EXISTS idx_outfits_user_saved ON outfits(user_id) WHERE is_saved = TRUE;
 CREATE INDEX IF NOT EXISTS idx_outfits_user_date ON outfits(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_outfits_user_worn_date ON outfits(user_id, worn_date) WHERE worn_date IS NOT NULL;
 
 -- ============================================================
 -- outfit_feedback

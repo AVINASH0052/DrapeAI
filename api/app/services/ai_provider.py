@@ -32,6 +32,35 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# ─── Shared httpx client (connection pooling) ─────────────────────────────────
+# Re-uses TCP connections and TLS sessions across all AI calls.
+# Saves ~200-400ms per request (no repeated TLS handshake).
+_http_client: httpx.AsyncClient | None = None
+
+
+def get_http_client() -> httpx.AsyncClient:
+    """Get or lazily create the shared httpx client."""
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(
+            limits=httpx.Limits(
+                max_connections=50,
+                max_keepalive_connections=20,
+            ),
+            timeout=httpx.Timeout(60.0, connect=10.0),
+            follow_redirects=True,
+        )
+    return _http_client
+
+
+async def close_http_client() -> None:
+    """Close the shared client. Call from lifespan shutdown."""
+    global _http_client
+    if _http_client and not _http_client.is_closed:
+        await _http_client.close()
+        _http_client = None
+        logger.info("Shared httpx client closed")
+
 
 class Role(str, Enum):
     VISION = "vision"
@@ -108,15 +137,15 @@ class OpenAICompatProvider(BaseProvider):
             "max_tokens": max_tokens,
             "temperature": temp,
         }
-        async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}",
-                         "Content-Type": "application/json"},
-                json=payload,
-            )
-            r.raise_for_status()
-            data = r.json()
+        client = get_http_client()
+        r = await client.post(
+            f"{self.base_url}/chat/completions",
+            headers={"Authorization": f"Bearer {self.api_key}",
+                     "Content-Type": "application/json"},
+            json=payload,
+        )
+        r.raise_for_status()
+        data = r.json()
         text = data["choices"][0]["message"]["content"].strip()
         usage = data.get("usage", {})
         t_in = usage.get("prompt_tokens", 0)
@@ -157,8 +186,9 @@ class OpenAICompatProvider(BaseProvider):
         text_parts: list[str] = []
         t_in = t_out = 0
 
-        async with httpx.AsyncClient(timeout=180) as client:
-            async with client.stream(
+        # Vision uses streaming — need a separate client with longer timeout
+        async with httpx.AsyncClient(timeout=httpx.Timeout(180.0, connect=10.0)) as stream_client:
+            async with stream_client.stream(
                 "POST",
                 f"{self.base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {self.api_key}",
@@ -204,15 +234,15 @@ class OpenAICompatProvider(BaseProvider):
         if self.name == "nvidia":
             payload["input_type"] = "query"
             payload["encoding_format"] = "float"
-        async with httpx.AsyncClient(timeout=30) as client:
-            r = await client.post(
-                f"{self.base_url}/embeddings",
-                headers={"Authorization": f"Bearer {self.api_key}",
-                         "Content-Type": "application/json"},
-                json=payload,
-            )
-            r.raise_for_status()
-            data = r.json()
+        client = get_http_client()
+        r = await client.post(
+            f"{self.base_url}/embeddings",
+            headers={"Authorization": f"Bearer {self.api_key}",
+                     "Content-Type": "application/json"},
+            json=payload,
+        )
+        r.raise_for_status()
+        data = r.json()
         return data["data"][0]["embedding"]
 
 
@@ -229,23 +259,23 @@ class AnthropicProvider(BaseProvider):
         if not self.api_key:
             raise RuntimeError("anthropic api key not configured")
         model = model or "claude-haiku-4-5"
-        async with httpx.AsyncClient(timeout=60) as client:
-            r = await client.post(
-                f"{self.base_url}/messages",
-                headers={
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": max_tokens,
-                    "temperature": temp,
-                },
-            )
-            r.raise_for_status()
-            data = r.json()
+        client = get_http_client()
+        r = await client.post(
+            f"{self.base_url}/messages",
+            headers={
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_tokens,
+                "temperature": temp,
+            },
+        )
+        r.raise_for_status()
+        data = r.json()
         text = "".join(b.get("text", "") for b in data.get("content", [])).strip()
         usage = data.get("usage", {})
         t_in = usage.get("input_tokens", 0)
@@ -260,31 +290,32 @@ class AnthropicProvider(BaseProvider):
             raise RuntimeError("anthropic api key not configured")
         model = model or "claude-sonnet-4-6"
         b64 = base64.b64encode(image_bytes).decode("ascii")
-        async with httpx.AsyncClient(timeout=120) as client:
-            r = await client.post(
-                f"{self.base_url}/messages",
-                headers={
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "max_tokens": 800,
-                    "messages": [{
-                        "role": "user",
-                        "content": [
-                            {"type": "image",
-                             "source": {"type": "base64",
-                                        "media_type": mime,
-                                        "data": b64}},
-                            {"type": "text", "text": prompt},
-                        ],
-                    }],
-                },
-            )
-            r.raise_for_status()
-            data = r.json()
+        client = get_http_client()
+        r = await client.post(
+            f"{self.base_url}/messages",
+            headers={
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "max_tokens": 800,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "image",
+                         "source": {"type": "base64",
+                                    "media_type": mime,
+                                    "data": b64}},
+                        {"type": "text", "text": prompt},
+                    ],
+                }],
+            },
+            timeout=120.0,
+        )
+        r.raise_for_status()
+        data = r.json()
         text = "".join(b.get("text", "") for b in data.get("content", [])).strip()
         usage = data.get("usage", {})
         t_in = usage.get("input_tokens", 0)

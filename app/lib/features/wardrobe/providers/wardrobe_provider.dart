@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/network/api_client.dart';
 import '../models/item_model.dart';
@@ -32,3 +33,11 @@ class WardrobeNotifier extends AsyncNotifier<List<Item>> {
 
   void refresh() => ref.invalidateSelf();
 }
+
+/// Derived provider: `true` when item count == 3 and dialog hasn't been shown.
+final shouldShowGratificationProvider = FutureProvider<bool>((ref) async {
+  final items = ref.watch(wardrobeProvider).valueOrNull;
+  if (items == null || items.length != 3) return false;
+  final prefs = await SharedPreferences.getInstance();
+  return !(prefs.getBool('gratification_shown') ?? false);
+});

@@ -1,13 +1,17 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/theme/theme_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_stats_provider.dart';
 import '../widgets/edit_profile_sheet.dart';
@@ -20,7 +24,25 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  bool _notificationsOn = true;
+  bool _notificationsOn = false;
+  bool _deletingAccount = false;
+
+  static const _notifPrefKey = 'push_notifications_enabled';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationPref();
+  }
+
+  Future<void> _loadNotificationPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _notificationsOn = prefs.getBool(_notifPrefKey) ?? false;
+      });
+    }
+  }
 
   Future<void> _openEditProfile() async {
     final result = await showModalBottomSheet<bool>(
@@ -70,15 +92,59 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
     if (confirmed != true || !mounted) return;
 
+    setState(() => _deletingAccount = true);
     try {
-      final api = ref.read(apiClientProvider);
-      await api.deleteMe();
-    } catch (_) {
-      // Best-effort — still log out locally
+      final result =
+          await ref.read(authStatusProvider.notifier).deleteAccount();
+      if (!mounted) return;
+
+      if (result == 'requires-recent-login') {
+        setState(() => _deletingAccount = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+                'Please sign in again before deleting your account.'),
+            backgroundColor: AppColors.red,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        return;
+      }
+
+      if (result != null) {
+        setState(() => _deletingAccount = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete account: $result'),
+            backgroundColor: AppColors.red,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        return;
+      }
+
+      // Success
+      context.go('/login');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _deletingAccount = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete account: $e'),
+          backgroundColor: AppColors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     }
-    if (!mounted) return;
-    ref.read(authStatusProvider.notifier).logout();
-    context.go('/login');
   }
 
   Future<void> _launchUrl(String url) async {
@@ -356,8 +422,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     _SettingRow(
                       label: 'Morning outfit notification',
                       trailing: GestureDetector(
-                        onTap: () =>
-                            setState(() => _notificationsOn = !_notificationsOn),
+                        onTap: () => _toggleNotifications(!_notificationsOn),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           width: 46, height: 28,
@@ -391,11 +456,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       ),
                     ),
-                    _SettingRow(
-                      label: 'Appearance',
-                      trailing: Text('Light',
-                          style: AppTypography.caption
-                              .copyWith(color: AppColors.ink2)),
+                    GestureDetector(
+                      onTap: () => ref.read(themeModeProvider.notifier).cycle(),
+                      child: _SettingRow(
+                        label: 'Appearance',
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              switch (ref.watch(themeModeProvider)) {
+                                ThemeMode.light => 'Light',
+                                ThemeMode.dark => 'Dark',
+                                ThemeMode.system => 'System',
+                              },
+                              style: AppTypography.caption
+                                  .copyWith(color: AppColors.ink2),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.chevron_right,
+                                size: 14, color: AppColors.ink3),
+                          ],
+                        ),
+                      ),
                     ),
                     GestureDetector(
                       onTap: () => context.push('/about'),
@@ -468,7 +550,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   SizedBox(
                     width: double.infinity, height: 50,
                     child: TextButton(
-                      onPressed: _deleteAccount,
+                      onPressed: _deletingAccount ? null : _deleteAccount,
+                      child: _deletingAccount
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: AppColors.red),
+                            )
+                          : Text('Delete account',
+                              style: AppTypography.button
+                                  .copyWith(color: AppColors.red)),
+                    ),
+                  ),
                       child: Text('Delete account',
                           style: AppTypography.button
                               .copyWith(color: AppColors.red)),

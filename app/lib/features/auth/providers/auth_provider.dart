@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../core/network/dio_provider.dart';
 import '../data/auth_repository.dart';
 
@@ -65,6 +67,51 @@ class AuthStatusNotifier extends StateNotifier<AuthStatus> {
   }
 
   Future<void> onLoginSuccess() => _checkBackend();
+
+  Future<void> signInWithApple() async {
+    state = AuthStatus.loading;
+    try {
+      final repo = _ref.read(authRepositoryProvider);
+      await repo.signInWithApple();
+      await _checkBackend();
+    } catch (e) {
+      state = AuthStatus.unauthenticated;
+      rethrow;
+    }
+  }
+
+  /// Deletes the user account: backend → Firebase → prefs → sign-out.
+  /// Returns `null` on success or an error message string on failure.
+  Future<String?> deleteAccount() async {
+    try {
+      // 1. Backend cascade-delete
+      final api = _ref.read(apiClientProvider);
+      await api.deleteMe();
+    } catch (_) {
+      // Best-effort — continue with local cleanup
+    }
+
+    try {
+      // 2. Delete Firebase user
+      await FirebaseAuth.instance.currentUser?.delete();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        return 'requires-recent-login';
+      }
+      // Other Firebase errors — still proceed with sign-out
+    }
+
+    try {
+      // 3. Clear SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+    } catch (_) {}
+
+    // 4. Sign out
+    await _ref.read(authRepositoryProvider).signOut();
+    state = AuthStatus.unauthenticated;
+    return null;
+  }
 
   void devBypass() {
     state = AuthStatus.onboardingNeeded;

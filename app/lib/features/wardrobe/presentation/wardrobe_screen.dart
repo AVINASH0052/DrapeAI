@@ -7,10 +7,18 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../providers/wardrobe_provider.dart';
+import '../widgets/gratification_dialog.dart';
 import '../widgets/item_card.dart';
 
-class WardrobeScreen extends ConsumerWidget {
+class WardrobeScreen extends ConsumerStatefulWidget {
   const WardrobeScreen({super.key});
+
+  @override
+  ConsumerState<WardrobeScreen> createState() => _WardrobeScreenState();
+}
+
+class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
+  bool _gratificationHandled = false;
 
   static const _categories = <String?>[
     null, 'top', 'bottom', 'dress', 'outer', 'ethnic', 'footwear', 'accessory'
@@ -20,9 +28,19 @@ class WardrobeScreen extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final items = ref.watch(wardrobeProvider);
     final activeCategory = ref.watch(wardrobeCategoryFilter);
+
+    // Watch the gratification provider and show dialog if triggered
+    final shouldGratify =
+        ref.watch(shouldShowGratificationProvider).valueOrNull ?? false;
+    if (shouldGratify && !_gratificationHandled) {
+      _gratificationHandled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) GratificationDialog.present(context);
+      });
+    }
 
     return Scaffold(
       body: SafeArea(

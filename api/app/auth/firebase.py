@@ -42,14 +42,18 @@ async def verify_firebase_token(token: str) -> dict:
     Raises ValueError on invalid token.
     """
     # Dev mode: accept test token (never allowed in production)
-    if settings.environment == "development" and token == "test-token":
-        return {
-            "user_id": "test-user-001",
-            "email": "test@drapeai.app",
-            "name": "Test User",
-            "phone_number": None,
-            "picture": None,
-        }
+    if token == "test-token":
+        if settings.environment == "development":
+            return {
+                "user_id": "test-user-001",
+                "email": "test@drapeai.app",
+                "name": "Test User",
+                "phone_number": None,
+                "picture": None,
+            }
+        else:
+            logger.warning("test-token rejected in %s environment", settings.environment)
+            raise ValueError("Test tokens are not accepted in production")
 
     keys = await _fetch_firebase_keys()
 

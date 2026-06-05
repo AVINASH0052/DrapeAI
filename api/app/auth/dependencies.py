@@ -39,9 +39,9 @@ async def get_current_user(request: Request) -> User:
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
-    # Log test-token usage for audit visibility
-    if settings.environment == "development" and token == "test-token":
-        logger.warning("Dev test-token used — would be rejected in production")
+    # Log test-token usage for audit visibility (only reachable in dev)
+    if token == "test-token":
+        logger.info("Dev test-token authenticated for user %s", claims.get("user_id"))
 
     pool = await get_pool()
     async with pool.acquire() as conn:

@@ -62,13 +62,6 @@ async def get_preferences(conn: asyncpg.Connection, user_id: str) -> dict | None
     return _row_to_dict(row)
 
 
-async def set_style_profile(conn: asyncpg.Connection, user_id: str, profile: str) -> None:
-    await conn.execute(
-        "UPDATE preferences SET style_profile = $2, updated_at = NOW() WHERE user_id = $1",
-        user_id, profile,
-    )
-
-
 def _row_to_dict(row) -> dict:
     result = dict(row)
     for json_field in ("style_goals", "occasions", "color_preferences", "lifestyle"):

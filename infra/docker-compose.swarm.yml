@@ -1,0 +1,105 @@
+# Docker Swarm deployment with zero-downtime rolling updates.
+#
+# Initialize Swarm:  docker swarm init
+# Deploy stack:      docker stack deploy -c docker-compose.swarm.yml drapeai
+# Update:            docker service update --image <new-image> drapeai_api
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: drapeai
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 200mb
+      --maxmemory-policy allkeys-lru
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  api:
+    image: ${REGISTRY:-drapeai}/api:${TAG:-latest}
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/drapeai
+      REDIS_URL: redis://redis:6379/0
+    env_file: ./api/.env.prod
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first    # New container starts BEFORE old one stops
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 2G
+
+  worker:
+    image: ${REGISTRY:-drapeai}/api:${TAG:-latest}
+    command: ["python", "-m", "arq", "app.workers.worker.WorkerSettings"]
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/drapeai
+      REDIS_URL: redis://redis:6379/0
+    env_file: ./api/.env.prod
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: start-first
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 1G
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    configs:
+      - source: nginx_conf
+        target: /etc/nginx/nginx.conf
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+configs:
+  nginx_conf:
+    file: ./infra/nginx/nginx.conf
+
+volumes:
+  pgdata:
+  redisdata:

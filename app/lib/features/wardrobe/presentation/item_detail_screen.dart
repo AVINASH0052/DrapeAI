@@ -9,6 +9,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/constants/environment.dart';
 import '../providers/wardrobe_provider.dart';
+import '../widgets/cost_per_wear_card.dart';
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
   final String itemId;
@@ -261,28 +262,10 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: AppColors.card,
-                            border: Border.all(color: AppColors.border),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('COST / WEAR',
-                                  style: AppTypography.mono.copyWith(
-                                      fontSize: 10,
-                                      letterSpacing: 0.6,
-                                      color: AppColors.ink2)),
-                              const SizedBox(height: 4),
-                              Text('--',
-                                  style: GoogleFonts.instrumentSerif(
-                                      fontSize: 26,
-                                      color: AppColors.orange)),
-                            ],
-                          ),
+                        child: CostPerWearCard(
+                          purchasePricePaise:
+                              (_item!['purchase_price'] as num?)?.toInt(),
+                          wearCount: wearCount,
                         ),
                       ),
                     ],

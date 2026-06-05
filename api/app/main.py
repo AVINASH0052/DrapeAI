@@ -10,7 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database.pool import init_pool, close_pool
-from app.routes import health, auth, user, items, outfits, lookbooks, demo, push, wardrobe, admin, stats, weather_route, notifications
+from app.services.redis_client import init_redis, close_redis
+from app.routes import health, auth, user, items, outfits, lookbooks, demo, push, wardrobe, admin, stats, weather_route, notifications, calendar, analytics
 from app.services.demo_wardrobe import seed_demo_wardrobe
 
 logging.basicConfig(
@@ -26,6 +27,11 @@ if settings.environment == "production" and settings.sentry_dsn:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_pool()
+    # Redis (rate limiter, task queue broker, caching)
+    try:
+        await init_redis()
+    except Exception as e:
+        logger.warning(f"Redis unavailable — falling back to in-memory rate limiting: {e}")
     # Seed demo wardrobe (idempotent — skips if already seeded)
     try:
         from app.database.pool import get_pool
@@ -42,6 +48,9 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Demo wardrobe seeding skipped: {e}")
     logger.info("DrapeAI backend started")
     yield
+    from app.services.ai_provider import close_http_client
+    await close_http_client()
+    await close_redis()
     await close_pool()
     logger.info("DrapeAI backend stopped")
 
@@ -65,7 +74,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Rate limiting (in-memory, per-user sliding window)
+# Rate limiting (Redis-backed, falls back to in-memory)
 from app.middleware.rate_limiter import RateLimitMiddleware
 
 app.add_middleware(RateLimitMiddleware)
@@ -97,3 +106,5 @@ app.include_router(admin.router)
 app.include_router(stats.router)
 app.include_router(weather_route.router)
 app.include_router(notifications.router)
+app.include_router(calendar.router)
+app.include_router(analytics.router)

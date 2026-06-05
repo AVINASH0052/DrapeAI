@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     # Sentry
     sentry_dsn: str = ""
 
+    # Redis (rate limiter, task queue, caching)
+    redis_url: str = "redis://localhost:6379/0"
+
     # Weather: uses Open-Meteo (free, no API key required)
 
     # Server

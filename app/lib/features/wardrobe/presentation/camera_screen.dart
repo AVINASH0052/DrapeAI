@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
+import '../widgets/photo_guide_overlay.dart';
 
 class CameraScreen extends ConsumerStatefulWidget {
   const CameraScreen({super.key});
@@ -21,6 +23,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   bool _uploading = false;
   int _tipIndex = 0;
   Timer? _tipTimer;
+  bool _showGuide = false;
 
   static const _tips = [
     'Lay flat on a plain surface',
@@ -38,6 +41,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         if (mounted) setState(() => _tipIndex = (_tipIndex + 1) % _tips.length);
       },
     );
+    _checkPhotoGuide();
+  }
+
+  Future<void> _checkPhotoGuide() async {
+    final show = await PhotoGuideOverlay.shouldShow();
+    if (show && mounted) setState(() => _showGuide = true);
   }
 
   @override
@@ -171,17 +180,34 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                         color: Colors.white),
                   ),
                 ),
-                GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    width: 36, height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => setState(() => _showGuide = true),
+                      child: Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.info_outline, size: 18,
+                            color: Colors.white),
+                      ),
                     ),
-                    child: const Icon(Icons.flash_on, size: 18,
-                        color: Colors.white),
-                  ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.flash_on, size: 18,
+                            color: Colors.white),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -286,6 +312,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
               ],
             ),
           ),
+          // Photo guide overlay
+          if (_showGuide)
+            PhotoGuideOverlay(
+              onDismiss: () => setState(() => _showGuide = false),
+            ),
         ],
       ),
     );

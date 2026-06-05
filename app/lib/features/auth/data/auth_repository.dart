@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:dio/dio.dart';
 
 class AuthRepository {
@@ -63,6 +64,22 @@ class AuthRepository {
   Future<Map<String, dynamic>> verifyWithBackend() async {
     final response = await _dio.post('/auth/verify');
     return response.data as Map<String, dynamic>;
+  }
+
+  Future<User> signInWithApple() async {
+    final appleCredential = await SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+    );
+    final oAuthProvider = OAuthProvider('apple.com');
+    final credential = oAuthProvider.credential(
+      idToken: appleCredential.identityToken,
+      accessToken: appleCredential.authorizationCode,
+    );
+    final result = await _auth.signInWithCredential(credential);
+    return result.user!;
   }
 
   Future<void> signOut() async {

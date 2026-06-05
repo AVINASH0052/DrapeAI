@@ -190,4 +190,32 @@ class ApiClient {
     await _dio.post(
         '/push/register', data: {'token': token, 'platform': platform});
   }
+
+  Future<void> unregisterPushToken() async {
+    await _dio.delete('/push/unregister');
+  }
+
+  // --- Calendar ---
+  Future<Map<String, dynamic>> getCalendarMonth(String month) async {
+    final resp = await _dio.get('/calendar', queryParameters: {'month': month});
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> assignOutfitToDate(
+      String date, String outfitId) async {
+    final resp =
+        await _dio.post('/calendar/$date', data: {'outfit_id': outfitId});
+    return resp.data as Map<String, dynamic>;
+  }
+
+  // --- Analytics ---
+  Future<Map<String, dynamic>> getAnalyticsOverview() async {
+    final resp = await _dio.get('/analytics/overview');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getCategoryBreakdown() async {
+    final resp = await _dio.get('/analytics/category-breakdown');
+    return resp.data as Map<String, dynamic>;
+  }
 }
