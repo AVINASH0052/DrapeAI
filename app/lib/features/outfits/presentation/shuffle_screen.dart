@@ -4,9 +4,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/constants/environment.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../models/outfit_model.dart';
 
 class ShuffleScreen extends ConsumerStatefulWidget {
@@ -23,6 +25,20 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
   Offset _dragOffset = Offset.zero;
   bool _dragging = false;
 
+  static const _occasions = [
+    ('casual', 'Casual'),
+    ('work', 'Work'),
+    ('party', 'Party'),
+    ('festive', 'Festive'),
+    ('date', 'Date'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _shuffle());
+  }
+
   Future<void> _shuffle() async {
     setState(() {
       _loading = true;
@@ -38,27 +54,29 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Shuffle failed: $e'),
-              backgroundColor: AppColors.red),
+          SnackBar(
+            content: Text('Shuffle failed: $e'),
+            backgroundColor: AppColors.red,
+          ),
         );
       }
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   void _onDragEnd() async {
     if (_dragOffset.dx > 80) {
-      // Save
       if (_currentOutfit != null) {
-        await ref.read(apiClientProvider)
+        await ref
+            .read(apiClientProvider)
             .submitFeedback(_currentOutfit!.id, 'save');
       }
       _shuffle();
     } else if (_dragOffset.dx < -80) {
-      // Skip
       if (_currentOutfit != null) {
-        await ref.read(apiClientProvider)
+        await ref
+            .read(apiClientProvider)
             .submitFeedback(_currentOutfit!.id, 'skip');
       }
       _shuffle();
@@ -73,132 +91,163 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(Icons.arrow_back, size: 20,
-                          color: AppColors.ink),
+      extendBody: true,
+      body: DrapeMeshBackground(
+        showOrbs: true,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+                child: Row(
+                  children: [
+                    DrapeIconButton(
+                      icon: Icons.arrow_back_rounded,
+                      onTap: () => Navigator.of(context).pop(),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Shuffle',
-                          style: GoogleFonts.instrumentSerif(
-                            fontSize: 22, fontWeight: FontWeight.w400,
-                            color: AppColors.ink)),
-                      Text('Swipe right to save, left to skip',
-                          style: AppTypography.caption),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Swipe area
-            Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.orange))
-                  : _currentOutfit == null
-                      ? _buildEmpty()
-                      : Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 14),
-                          child: GestureDetector(
-                            onPanStart: (_) =>
-                                setState(() => _dragging = true),
-                            onPanUpdate: (d) =>
-                                setState(() => _dragOffset += d.delta),
-                            onPanEnd: (_) => _onDragEnd(),
-                            child: AnimatedContainer(
-                              duration: _dragging
-                                  ? Duration.zero
-                                  : const Duration(milliseconds: 280),
-                              curve: Curves.easeOut,
-                              transform: Matrix4.identity()
-                                ..translate(_dragOffset.dx,
-                                    _dragOffset.dy * 0.4)
-                                ..rotateZ(_dragOffset.dx * 0.001),
-                              child: Stack(
-                                children: [
-                                  _buildSwipeCard(),
-                                  if (_dragOffset.dx > 30)
-                                    Positioned(
-                                      top: 24, left: 24,
-                                      child: _SwipeLabel(
-                                          text: 'SAVE',
-                                          color: AppColors.lime),
-                                    ),
-                                  if (_dragOffset.dx < -30)
-                                    Positioned(
-                                      top: 24, right: 24,
-                                      child: _SwipeLabel(
-                                          text: 'SKIP',
-                                          color: AppColors.red),
-                                    ),
-                                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShaderMask(
+                            shaderCallback: (_) => AppGradients.hero
+                                .createShader(const Rect.fromLTWH(0, 0, 200, 36)),
+                            child: Text(
+                              'Shuffle',
+                              style: GoogleFonts.syne(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
                               ),
                             ),
                           ),
-                        ),
-            ),
-            // Bottom action buttons
-            Padding(
-              padding: const EdgeInsets.fromLTRB(0, 0, 0, 28),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _CircleAction(
-                    icon: Icons.close,
-                    color: AppColors.red,
-                    size: 60,
-                    onTap: () {
-                      if (_currentOutfit != null) {
-                        ref.read(apiClientProvider)
-                            .submitFeedback(_currentOutfit!.id, 'skip');
-                        _shuffle();
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 24),
-                  _CircleAction(
-                    icon: Icons.favorite,
-                    color: Colors.white,
-                    bgColor: AppColors.orange,
-                    size: 72,
-                    onTap: () {
-                      if (_currentOutfit != null) {
-                        ref.read(apiClientProvider)
-                            .submitFeedback(_currentOutfit!.id, 'save');
-                        _shuffle();
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 24),
-                  _CircleAction(
-                    icon: Icons.shuffle,
-                    size: 60,
-                    onTap: _shuffle,
-                  ),
-                ],
+                          Text(
+                            'swipe right = save · left = skip',
+                            style: AppTypography.caption,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              SizedBox(
+                height: 44,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  itemCount: _occasions.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final (key, label) = _occasions[i];
+                    return DrapeChip(
+                      label: label,
+                      active: _occasion == key,
+                      onTap: () {
+                        setState(() => _occasion = key);
+                        _shuffle();
+                      },
+                    );
+                  },
+                ),
+              ),
+              Expanded(
+                child: _loading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: AppColors.orange),
+                      )
+                    : _currentOutfit == null
+                        ? _buildEmpty()
+                        : Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                            child: GestureDetector(
+                              onPanStart: (_) => setState(() => _dragging = true),
+                              onPanUpdate: (d) =>
+                                  setState(() => _dragOffset += d.delta),
+                              onPanEnd: (_) => _onDragEnd(),
+                              child: AnimatedContainer(
+                                duration: _dragging
+                                    ? Duration.zero
+                                    : const Duration(milliseconds: 300),
+                                curve: Curves.easeOutBack,
+                                transform: Matrix4.identity()
+                                  ..translate(_dragOffset.dx, _dragOffset.dy * 0.35)
+                                  ..rotateZ(_dragOffset.dx * 0.0012),
+                                child: Stack(
+                                  children: [
+                                    _buildSwipeCard(),
+                                    if (_dragOffset.dx > 30)
+                                      const Positioned(
+                                        top: 28,
+                                        left: 28,
+                                        child: _SwipeStamp(
+                                          label: 'SAVE',
+                                          emoji: '💚',
+                                          color: AppColors.lime,
+                                        ),
+                                      ),
+                                    if (_dragOffset.dx < -30)
+                                      const Positioned(
+                                        top: 28,
+                                        right: 28,
+                                        child: _SwipeStamp(
+                                          label: 'NAH',
+                                          emoji: '👋',
+                                          color: AppColors.red,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 8, 0, 28),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _CircleAction(
+                      icon: Icons.close_rounded,
+                      gradient: const LinearGradient(
+                        colors: [AppColors.red, Color(0xFFFF4D6D)],
+                      ),
+                      size: 58,
+                      onTap: () {
+                        if (_currentOutfit != null) {
+                          ref
+                              .read(apiClientProvider)
+                              .submitFeedback(_currentOutfit!.id, 'skip');
+                          _shuffle();
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 28),
+                    _CircleAction(
+                      icon: Icons.favorite_rounded,
+                      gradient: AppGradients.cta,
+                      size: 72,
+                      onTap: () {
+                        if (_currentOutfit != null) {
+                          ref
+                              .read(apiClientProvider)
+                              .submitFeedback(_currentOutfit!.id, 'save');
+                          _shuffle();
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 28),
+                    _CircleAction(
+                      icon: Icons.shuffle_rounded,
+                      size: 58,
+                      onTap: _shuffle,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -206,176 +255,227 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
 
   Widget _buildEmpty() {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.shuffle, size: 48, color: AppColors.ink3),
-          const SizedBox(height: 16),
-          Text('Tap shuffle to get started', style: AppTypography.body),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: 180,
-            child: ElevatedButton(
-              onPressed: _shuffle,
-              child: const Text('Shuffle'),
+      child: DrapeGlassCard(
+        gradientBorder: true,
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🎲', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 12),
+            Text(
+              'no fits to shuffle',
+              style: AppTypography.headingSerif.copyWith(fontSize: 24),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'add more pieces to your closet first',
+              style: AppTypography.body,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            DrapeGradientButton(
+              label: 'Try again',
+              onPressed: _shuffle,
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildSwipeCard() {
     final outfit = _currentOutfit!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.card,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
+        gradient: AppGradients.hero,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
+            color: AppColors.orange.withValues(alpha: 0.25),
+            blurRadius: 32,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          // Header block
-          Container(
-            height: 120,
-            decoration: BoxDecoration(
-              color: AppColors.bgWarm,
-              borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24)),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  top: 12, left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.ink,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      outfit.occasion.toUpperCase(),
-                      style: AppTypography.mono.copyWith(
-                          color: Colors.white, fontSize: 10.5),
-                    ),
-                  ),
-                ),
-                if (outfit.ruleScore > 0)
+      padding: const EdgeInsets.all(2),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColorsDark.card : AppColors.card,
+          borderRadius: BorderRadius.circular(26),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            Container(
+              height: 100,
+              decoration: BoxDecoration(
+                gradient: AppGradients.heroSoft,
+              ),
+              child: Stack(
+                children: [
                   Positioned(
-                    top: 12, right: 12,
+                    top: 14,
+                    left: 14,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 6),
+                          horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
-                        color: AppColors.orange,
+                        gradient: AppGradients.cta,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        '${outfit.ruleScore.round()}',
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 16, fontWeight: FontWeight.w600,
-                          color: Colors.white),
+                        outfit.occasion.toUpperCase(),
+                        style: AppTypography.mono.copyWith(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-              ],
+                  if (outfit.ruleScore > 0)
+                    Positioned(
+                      top: 14,
+                      right: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.goldSoft,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                              color: AppColors.gold.withValues(alpha: 0.5)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('🔥', style: TextStyle(fontSize: 12)),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${outfit.ruleScore.round()}',
+                              style: GoogleFonts.spaceMono(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          // Items + reason
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 20),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: outfit.items.map((item) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Container(
-                            width: 100, height: 110,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: outfit.items.map((item) {
+                          return Container(
+                            width: 96,
+                            height: 110,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: AppColors.border),
+                              borderRadius: BorderRadius.circular(18),
+                              gradient: AppGradients.hero,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 18,
-                                  offset: const Offset(0, 6),
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
+                            padding: const EdgeInsets.all(2),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(16),
                               child: CachedNetworkImage(
-                                imageUrl: Environment.resolveUrl(item.imageUrl),
+                                imageUrl:
+                                    Environment.resolveUrl(item.imageUrl),
                                 fit: BoxFit.cover,
                                 placeholder: (_, __) =>
                                     Container(color: AppColors.gray100),
                                 errorWidget: (_, __, ___) => Container(
                                   color: AppColors.gray100,
-                                  child: const Icon(
-                                      Icons.broken_image_outlined,
-                                      color: AppColors.gray400),
+                                  child: const Icon(Icons.broken_image_outlined),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  if (outfit.reason != null) ...[
-                    Text(
-                      '"${outfit.reason!}"',
-                      style: GoogleFonts.instrumentSerif(
-                        fontSize: 18,
-                        color: AppColors.ink,
-                        height: 1.3,
+                          );
+                        }).toList(),
                       ),
-                      textAlign: TextAlign.center,
                     ),
+                    if (outfit.reason != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        '"${outfit.reason!}"',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          fontStyle: FontStyle.italic,
+                          color: AppColors.textMuted(context),
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SwipeLabel extends StatelessWidget {
-  final String text;
+class _SwipeStamp extends StatelessWidget {
+  final String label;
+  final String emoji;
   final Color color;
-  const _SwipeLabel({required this.text, required this.color});
+
+  const _SwipeStamp({
+    required this.label,
+    required this.emoji,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Transform.rotate(
-      angle: text == 'SAVE' ? -0.2 : 0.2,
+      angle: label == 'SAVE' ? -0.25 : 0.25,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          border: Border.all(color: color, width: 2),
-          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color, width: 3),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(text,
-            style: GoogleFonts.jetBrainsMono(
-              fontSize: 14, fontWeight: FontWeight.w600,
-              color: color, letterSpacing: 0.6)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 16)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.spaceMono(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: color,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -383,41 +483,49 @@ class _SwipeLabel extends StatelessWidget {
 
 class _CircleAction extends StatelessWidget {
   final IconData icon;
-  final Color? color;
-  final Color? bgColor;
+  final Gradient? gradient;
   final double size;
   final VoidCallback onTap;
 
   const _CircleAction({
     required this.icon,
-    this.color,
-    this.bgColor,
+    this.gradient,
     required this.size,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: size, height: size,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
-          color: bgColor ?? AppColors.card,
+          gradient: gradient,
+          color: gradient == null
+              ? (isDark ? AppColorsDark.card : AppColors.card)
+              : null,
           shape: BoxShape.circle,
-          border: bgColor == null
-              ? Border.all(color: AppColors.border)
+          border: gradient == null
+              ? Border.all(
+                  color: isDark ? AppColorsDark.border : AppColors.border)
               : null,
           boxShadow: [
             BoxShadow(
-              color: (bgColor ?? Colors.black).withValues(alpha: bgColor != null ? 0.35 : 0.06),
-              blurRadius: bgColor != null ? 24 : 14,
-              offset: const Offset(0, 4),
+              color: (gradient != null ? AppColors.orange : Colors.black)
+                  .withValues(alpha: gradient != null ? 0.35 : 0.08),
+              blurRadius: gradient != null ? 20 : 12,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
-        child: Icon(icon, size: size * 0.38,
-            color: color ?? AppColors.ink),
+        child: Icon(
+          icon,
+          size: size * 0.4,
+          color: gradient != null ? Colors.white : AppColors.textPrimary(context),
+        ),
       ),
     );
   }

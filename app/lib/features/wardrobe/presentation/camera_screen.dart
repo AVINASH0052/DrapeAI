@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../widgets/photo_guide_overlay.dart';
 
 class CameraScreen extends ConsumerStatefulWidget {
@@ -26,17 +29,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   bool _showGuide = false;
 
   static const _tips = [
-    'Lay flat on a plain surface',
-    'Soft natural light works best',
-    'Fill the frame, leave a little margin',
-    'No hangers — just the item',
+    '🪟 lay flat, plain background',
+    '☀️ soft natural light hits different',
+    '📐 fill the frame, leave a margin',
+    '🚫 no hangers — just the piece',
   ];
 
   @override
   void initState() {
     super.initState();
     _tipTimer = Timer.periodic(
-      const Duration(milliseconds: 2400),
+      const Duration(milliseconds: 2800),
       (_) {
         if (mounted) setState(() => _tipIndex = (_tipIndex + 1) % _tips.length);
       },
@@ -75,8 +78,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         backgroundColor: AppColors.red,
         content: Text(
           isPermission
-              ? 'Permission denied. Open Settings → Drapeai → enable Camera & Photos.'
-              : 'Could not open ${source == ImageSource.camera ? "camera" : "gallery"}: $msg',
+              ? 'Enable Camera & Photos in Settings → DrapeAI'
+              : 'Could not open ${source == ImageSource.camera ? "camera" : "gallery"}',
           style: const TextStyle(color: Colors.white),
         ),
       ));
@@ -89,9 +92,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => _PhotoPreviewSheet(
         imagePath: path,
-        onRetake: () {
-          Navigator.pop(context);
-        },
+        onRetake: () => Navigator.pop(context),
         onUse: () {
           Navigator.pop(context);
           _upload(path);
@@ -105,14 +106,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     try {
       final api = ref.read(apiClientProvider);
       final result = await api.uploadItem(path);
-      if (mounted) {
-        context.pushNamed('tag_review', extra: result);
-      }
+      if (mounted) context.pushNamed('tag_review', extra: result);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e'),
-              backgroundColor: AppColors.red),
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: AppColors.red,
+          ),
         );
       }
     } finally {
@@ -123,201 +124,277 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0E0D0C),
+      backgroundColor: const Color(0xFF0C0A14),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Simulated camera preview gradient
+          // Cosmic camera preview
           Container(
             decoration: const BoxDecoration(
               gradient: RadialGradient(
-                center: Alignment(0, -0.2),
-                radius: 0.7,
-                colors: [Color(0xFF2A2724), Color(0xFF0E0D0C)],
+                center: Alignment(0, -0.15),
+                radius: 1.1,
+                colors: [
+                  Color(0xFF2A1035),
+                  Color(0xFF140A20),
+                  Color(0xFF0C0A14),
+                ],
+                stops: [0.0, 0.45, 1.0],
               ),
             ),
           ),
-          // Scanline overlay
-          Opacity(
-            opacity: 0.06,
+          // Accent orbs
+          Positioned(
+            top: 80,
+            right: -30,
             child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.white10],
-                  stops: [0, 1],
-                ),
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.orange.withValues(alpha: 0.12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.orange.withValues(alpha: 0.2),
+                    blurRadius: 80,
+                    spreadRadius: 20,
+                  ),
+                ],
               ),
             ),
           ),
-          // Dashed frame
+          Positioned(
+            bottom: 200,
+            left: -40,
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.pink.withValues(alpha: 0.1),
+              ),
+            ),
+          ),
           const _DashedFrame(),
-          // Faint silhouette hint
           Center(
             child: Opacity(
-              opacity: 0.12,
-              child: Icon(Icons.checkroom_rounded, size: 100,
-                  color: Colors.white),
+              opacity: 0.08,
+              child: Icon(Icons.checkroom_rounded,
+                  size: 120, color: Colors.white),
             ),
           ),
-          // Top controls
+          // Top bar
           Positioned(
-            top: MediaQuery.of(context).padding.top + 14,
-            left: 16, right: 16,
+            top: MediaQuery.of(context).padding.top + 12,
+            left: 16,
+            right: 16,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                GestureDetector(
+                _GlassCircleBtn(
+                  icon: Icons.close_rounded,
                   onTap: () => context.pop(),
-                  child: Container(
-                    width: 36, height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.close, size: 20,
-                        color: Colors.white),
-                  ),
                 ),
                 Row(
                   children: [
-                    GestureDetector(
+                    _GlassCircleBtn(
+                      icon: Icons.tips_and_updates_outlined,
                       onTap: () => setState(() => _showGuide = true),
-                      child: Container(
-                        width: 36, height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.info_outline, size: 18,
-                            color: Colors.white),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () {},
-                      child: Container(
-                        width: 36, height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.flash_on, size: 18,
-                            color: Colors.white),
-                      ),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          // Rotating tip
+          // Title
           Positioned(
-            bottom: 140, left: 0, right: 0,
+            top: MediaQuery.of(context).padding.top + 64,
+            left: 0,
+            right: 0,
+            child: Column(
+              children: [
+                Text(
+                  'add to closet',
+                  style: GoogleFonts.syne(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'AI tags it in seconds',
+                  style: AppTypography.caption.copyWith(color: Colors.white60),
+                ),
+              ],
+            ),
+          ),
+          // Rotating tip pill
+          Positioned(
+            bottom: 150,
+            left: 0,
+            right: 0,
             child: Center(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 350),
                 child: Container(
                   key: ValueKey(_tipIndex),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.4),
+                    color: Colors.black.withValues(alpha: 0.45),
                     borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: AppColors.orange.withValues(alpha: 0.4),
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6, height: 6,
-                        decoration: const BoxDecoration(
-                          color: AppColors.orange,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(_tips[_tipIndex],
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 12)),
-                    ],
+                  child: Text(
+                    _tips[_tipIndex],
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-          // Upload processing overlay
-          if (_uploading)
-            Container(
-              color: Colors.black.withValues(alpha: 0.7),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(color: AppColors.orange),
-                    const SizedBox(height: 16),
-                    Text('Processing your item...',
-                        style: TextStyle(color: Colors.white, fontSize: 15)),
-                    const SizedBox(height: 4),
-                    Text('Removing background and tagging',
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontSize: 13)),
-                  ],
-                ),
-              ),
-            ),
-          // Bottom controls
+          if (_uploading) _buildUploadOverlay(),
           Positioned(
-            bottom: 36, left: 0, right: 0,
+            bottom: 40,
+            left: 0,
+            right: 0,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Gallery
-                GestureDetector(
-                  onTap: _uploading
-                      ? null
-                      : () => _pickImage(ImageSource.gallery),
-                  child: Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.photo_library_outlined,
-                        size: 22, color: Colors.white),
-                  ),
+                _GlassCircleBtn(
+                  icon: Icons.photo_library_rounded,
+                  size: 52,
+                  onTap: _uploading ? null : () => _pickImage(ImageSource.gallery),
                 ),
-                const SizedBox(width: 28),
-                // Shutter
+                const SizedBox(width: 32),
                 GestureDetector(
-                  onTap: _uploading
-                      ? null
-                      : () => _pickImage(ImageSource.camera),
+                  onTap: _uploading ? null : () => _pickImage(ImageSource.camera),
                   child: Container(
-                    width: 72, height: 72,
+                    width: 76,
+                    height: 76,
                     decoration: BoxDecoration(
-                      color: Colors.white,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 4,
+                      gradient: AppGradients.cta,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.orange.withValues(alpha: 0.5),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 28),
-                // Spacer to balance gallery button
-                const SizedBox(width: 44),
+                const SizedBox(width: 32),
+                const SizedBox(width: 52),
               ],
             ),
           ),
-          // Photo guide overlay
           if (_showGuide)
             PhotoGuideOverlay(
               onDismiss: () => setState(() => _showGuide = false),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUploadOverlay() {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.75),
+      child: Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 40),
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1525).withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppColors.orange.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: CircularProgressIndicator(
+                      color: AppColors.orange,
+                      strokeWidth: 3,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'cooking your fit…',
+                    style: GoogleFonts.syne(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'removing bg + AI tagging',
+                    style: AppTypography.caption.copyWith(color: Colors.white60),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassCircleBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final double size;
+
+  const _GlassCircleBtn({
+    required this.icon,
+    this.onTap,
+    this.size = 40,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            ),
+            child: Icon(icon, size: size * 0.45, color: Colors.white),
+          ),
+        ),
       ),
     );
   }
@@ -331,10 +408,10 @@ class _DashedFrame extends StatelessWidget {
     return Positioned.fill(
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-          40,
-          MediaQuery.of(context).padding.top + 80,
-          40,
-          220,
+          36,
+          MediaQuery.of(context).padding.top + 100,
+          36,
+          200,
         ),
         child: CustomPaint(painter: _DashedBorderPainter()),
       ),
@@ -345,12 +422,15 @@ class _DashedFrame extends StatelessWidget {
 class _DashedBorderPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    const dash = 10.0;
-    const gap = 6.0;
-    const radius = 20.0;
-    const sw = 1.5;
+    const dash = 12.0;
+    const gap = 7.0;
+    const radius = 24.0;
+    const sw = 2.0;
+
     final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.25)
+      ..shader = AppGradients.hero.createShader(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+      )
       ..strokeWidth = sw
       ..style = PaintingStyle.stroke;
 
@@ -360,8 +440,7 @@ class _DashedBorderPainter extends CustomPainter {
     );
 
     final path = Path()..addRRect(rrect);
-    final metrics = path.computeMetrics();
-    for (final metric in metrics) {
+    for (final metric in path.computeMetrics()) {
       double d = 0;
       bool draw = true;
       while (d < metric.length) {
@@ -394,76 +473,79 @@ class _PhotoPreviewSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        color: Color(0xFF16131F),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Sheet handle
           Container(
-            width: 36, height: 4,
+            width: 40,
+            height: 4,
             decoration: BoxDecoration(
-              color: AppColors.borderStrong,
+              color: Colors.white24,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(height: 18),
-          // Quality indicator
+          const SizedBox(height: 20),
           Row(
             children: [
               Container(
-                width: 36, height: 36,
+                width: 44,
+                height: 44,
                 decoration: const BoxDecoration(
-                  color: AppColors.limeSoft,
+                  gradient: AppGradients.cta,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check, size: 20,
-                    color: Color(0xFF4D7C0F)),
+                child: const Icon(Icons.check_rounded, color: Colors.white),
               ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Looks good',
-                      style: AppTypography.label.copyWith(
-                          fontSize: 15, fontWeight: FontWeight.w600)),
-                  Text('Sharp, well-lit, plain background.',
-                      style: AppTypography.caption),
-                ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'looks fire 🔥',
+                      style: GoogleFonts.syne(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'sharp, lit, clean background',
+                      style: AppTypography.caption
+                          .copyWith(color: Colors.white60),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          // Action buttons
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: OutlinedButton(
-                    onPressed: onRetake,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.ink,
-                      side: const BorderSide(color: AppColors.border),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                child: OutlinedButton(
+                  onPressed: onRetake,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white24),
+                    minimumSize: const Size(0, 52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Text('Retake'),
                   ),
+                  child: const Text('Retake'),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 flex: 2,
-                child: SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: onUse,
-                    child: const Text('Use this photo'),
-                  ),
+                child: DrapeGradientButton(
+                  label: 'Use this',
+                  onPressed: onUse,
                 ),
               ),
             ],

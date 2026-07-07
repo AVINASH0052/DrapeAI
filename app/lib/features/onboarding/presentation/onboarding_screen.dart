@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -115,81 +117,95 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (_step == 0) return _buildCompletion();
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _ProgressBar(value: _step / _totalSteps),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _CircleBackButton(onTap: _back),
+      body: DrapeMeshBackground(
+        showOrbs: false,
+        child: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _ProgressBar(value: _step / _totalSteps),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(_headings[_step - 1],
-                    style: AppTypography.displaySerif.copyWith(fontSize: 30)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 16, 20, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _step > 1
+                      ? DrapeIconButton(
+                          icon: Icons.arrow_back_rounded,
+                          onTap: _back,
+                        )
+                      : const SizedBox(width: 40, height: 40),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 18),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(_subtitles[_step - 1], style: AppTypography.body),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: ShaderMask(
+                    shaderCallback: (_) => AppGradients.hero
+                        .createShader(const Rect.fromLTWH(0, 0, 320, 50)),
+                    child: Text(
+                      _headings[_step - 1],
+                      style: AppTypography.displaySerif.copyWith(
+                        fontSize: 30,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: _buildStep(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(_subtitles[_step - 1], style: AppTypography.body),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-              child: ElevatedButton(
-                onPressed: _canProceed && !_saving ? _next : null,
-                child: _saving
-                    ? const SizedBox(
-                        height: 20, width: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : Text(_step == _totalSteps ? 'Finish' : 'Next'),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildStep(),
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                child: DrapeGradientButton(
+                  label: _step == _totalSteps ? 'let\'s go ✨' : 'next →',
+                  loading: _saving,
+                  onPressed: _canProceed && !_saving ? _next : null,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   static const _headings = [
-    'What should we call you?',
-    'How old are you?',
-    'Who are we styling?',
-    'What’s your style?',
-    'What do you dress for?',
-    'Your go-to colors?',
-    'How do you like the fit?',
-    'Where are you based?',
-    'Tell us more — optional',
+    'what\'s your name?',
+    'how old are you?',
+    'who are we styling?',
+    'pick your vibe',
+    'dress for what?',
+    'your color era',
+    'how\'s the fit?',
+    'where you at?',
+    'extra sauce — optional',
   ];
 
   static const _subtitles = [
-    'Your name helps us personalize suggestions.',
-    'We tune trend and formality to your age.',
-    'Pick one — we’ll tailor the closet to you.',
-    'Pick up to 3 that match you.',
-    'Multi-select — these power your daily outfits.',
-    'Tones you reach for again and again.',
-    'Pick one — you can change it later.',
-    'We use this for weather + occasion calls.',
-    'All optional. Skip what you’d rather not share.',
+    'so we can hype you up properly.',
+    'we tune trends to your age — no cap.',
+    'pick one. we\'ll style your whole closet.',
+    'choose up to 3 that feel like you.',
+    'these power your daily fit suggestions.',
+    'the palettes you always reach for.',
+    'slim, regular, oversized — your call.',
+    'for weather + occasion intel.',
+    'skip anything you\'d rather not share.',
   ];
 
   Widget _buildStep() {
@@ -215,7 +231,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         controller: _nameController,
         autofocus: true,
         textCapitalization: TextCapitalization.words,
-        style: GoogleFonts.instrumentSerif(fontSize: 28, color: AppColors.ink),
+        style: GoogleFonts.syne(
+            fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.ink),
         onChanged: (_) => setState(() {}),
         decoration: const InputDecoration(
           hintText: 'Your first name',
@@ -232,8 +249,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         children: [
           const SizedBox(height: 20),
           Text('$_age',
-              style: GoogleFonts.instrumentSerif(
-                  fontSize: 72, color: AppColors.ink, height: 1)),
+              style: GoogleFonts.syne(
+                  fontSize: 80,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink,
+                  height: 1)),
           Text('years', style: AppTypography.caption),
           const SizedBox(height: 24),
           SliderTheme(
@@ -287,8 +307,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name, style: GoogleFonts.instrumentSerif(
-                          fontSize: 22, color: AppColors.ink)),
+                        Text(name, style: GoogleFonts.syne(
+                          fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.ink)),
                         const SizedBox(height: 4),
                         Text(hint, style: AppTypography.caption),
                       ],
@@ -977,8 +997,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             children: [
               Text(
                 _heightCm != null ? '$_heightCm cm' : 'Skip',
-                style: GoogleFonts.instrumentSerif(
-                    fontSize: 22, color: AppColors.ink),
+                style: GoogleFonts.syne(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink),
               ),
               Expanded(
                 child: SliderTheme(
@@ -1105,88 +1127,100 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     };
 
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 40, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.orangeSoft,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text('✶ all set',
-                    style: AppTypography.mono.copyWith(
-                        color: AppColors.orange,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w500)),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _nameController.text.trim().isEmpty
-                    ? "You're ready."
-                    : "Welcome, ${_nameController.text.trim()}.",
-                style: AppTypography.displaySerif.copyWith(fontSize: 36),
-              ),
-              const SizedBox(height: 6),
-              Text("Here's the profile we'll style for.",
-                  style: AppTypography.body),
-              const SizedBox(height: 24),
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
+      body: DrapeMeshBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                   decoration: BoxDecoration(
-                    color: AppColors.card,
-                    border: Border.all(color: AppColors.border),
-                    borderRadius: BorderRadius.circular(14),
+                    gradient: AppGradients.cta,
+                    borderRadius: BorderRadius.circular(999),
                   ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        _SummaryRow('Age', ['$_age']),
-                        const Divider(height: 24),
-                        _SummaryRow('Styling', [labels[_gender] ?? '']),
-                        const Divider(height: 24),
-                        _SummaryRow('Style',
-                            _styles.map((s) => labels[s] ?? s).toList()),
-                        const Divider(height: 24),
-                        _SummaryRow('Occasions',
-                            _occasions.map((o) => labels[o] ?? o).toList()),
-                        const Divider(height: 24),
-                        _SummaryRow('Colors',
-                            _colors.map((c) => labels[c] ?? c).toList()),
-                        const Divider(height: 24),
-                        _SummaryRow('Fit', [labels[_fit] ?? '']),
-                        const Divider(height: 24),
-                        _SummaryRow('Based in', [_city ?? '']),
-                        if (_bodyType != null || _skinUndertone != null ||
-                            _budgetTier != null || _lifestyle.isNotEmpty) ...[
-                          const Divider(height: 24),
-                          _SummaryRow('Profile', [
-                            if (_bodyType != null) _bodyType!.replaceAll('_', ' '),
-                            if (_skinUndertone != null) '$_skinUndertone undertone',
-                            if (_budgetTier != null) '$_budgetTier budget',
-                            if (_heightCm != null) '${_heightCm}cm',
-                            ..._lifestyle,
-                          ]),
-                        ],
-                      ],
+                  child: Text(
+                    '✨ profile locked in',
+                    style: AppTypography.mono.copyWith(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              ElevatedButton(
-                onPressed: () {
-                  ref.read(authStatusProvider.notifier).setAuthenticated();
-                  context.go('/wardrobe');
-                },
-                child: const Text('Start exploring →'),
-              ),
-            ],
+                const SizedBox(height: 20),
+                ShaderMask(
+                  shaderCallback: (_) => AppGradients.hero
+                      .createShader(const Rect.fromLTWH(0, 0, 340, 60)),
+                  child: Text(
+                    _nameController.text.trim().isEmpty
+                        ? "you're ready."
+                        : "hey, ${_nameController.text.trim()}.",
+                    style: AppTypography.displaySerif.copyWith(
+                      fontSize: 36,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text("here's the vibe we'll style for.",
+                    style: AppTypography.body),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: DrapeGlassCard(
+                    gradientBorder: true,
+                    padding: const EdgeInsets.all(18),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _SummaryRow('Age', ['$_age']),
+                          const Divider(height: 24),
+                          _SummaryRow('Styling', [labels[_gender] ?? '']),
+                          const Divider(height: 24),
+                          _SummaryRow('Style',
+                              _styles.map((s) => labels[s] ?? s).toList()),
+                          const Divider(height: 24),
+                          _SummaryRow('Occasions',
+                              _occasions.map((o) => labels[o] ?? o).toList()),
+                          const Divider(height: 24),
+                          _SummaryRow('Colors',
+                              _colors.map((c) => labels[c] ?? c).toList()),
+                          const Divider(height: 24),
+                          _SummaryRow('Fit', [labels[_fit] ?? '']),
+                          const Divider(height: 24),
+                          _SummaryRow('Based in', [_city ?? '']),
+                          if (_bodyType != null ||
+                              _skinUndertone != null ||
+                              _budgetTier != null ||
+                              _lifestyle.isNotEmpty) ...[
+                            const Divider(height: 24),
+                            _SummaryRow('Profile', [
+                              if (_bodyType != null)
+                                _bodyType!.replaceAll('_', ' '),
+                              if (_skinUndertone != null)
+                                '$_skinUndertone undertone',
+                              if (_budgetTier != null) '$_budgetTier budget',
+                              if (_heightCm != null) '${_heightCm}cm',
+                              ..._lifestyle,
+                            ]),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                DrapeGradientButton(
+                  label: 'open my closet →',
+                  onPressed: () {
+                    ref.read(authStatusProvider.notifier).setAuthenticated();
+                    context.go('/wardrobe');
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1200,44 +1234,43 @@ class _ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 3,
-      decoration: BoxDecoration(
-        color: const Color(0xFFECEAE4),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: FractionallySizedBox(
-        alignment: Alignment.centerLeft,
-        widthFactor: value.clamp(0, 1),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-          decoration: BoxDecoration(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          '${(value * 100).round()}%',
+          style: AppTypography.mono.copyWith(
             color: AppColors.orange,
-            borderRadius: BorderRadius.circular(999),
+            fontWeight: FontWeight.w700,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _CircleBackButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _CircleBackButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36, height: 36,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: AppColors.border),
+        const SizedBox(height: 6),
+        Container(
+          height: 6,
+          decoration: BoxDecoration(
+            color: AppColors.gray100,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: value.clamp(0, 1),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOutCubic,
+              decoration: BoxDecoration(
+                gradient: AppGradients.cta,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.orange.withValues(alpha: 0.4),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        child: const Icon(Icons.arrow_back, size: 20, color: AppColors.ink),
-      ),
+      ],
     );
   }
 }
@@ -1258,15 +1291,25 @@ class _SelectionCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: selected ? AppColors.orangeSoft : AppColors.card,
+          gradient: selected ? AppGradients.heroSoft : null,
+          color: selected ? null : AppColors.surface(context),
           border: Border.all(
             color: selected ? AppColors.orange : AppColors.border,
             width: selected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.orange.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: child,
       ),
@@ -1302,14 +1345,16 @@ class _TileGrid extends StatelessWidget {
           return GestureDetector(
             onTap: () => onTap(key),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
+              duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isActive ? AppColors.orangeSoft : AppColors.card,
+                gradient: isActive ? AppGradients.heroSoft : null,
+                color: isActive ? null : AppColors.surface(context),
                 border: Border.all(
                   color: isActive ? AppColors.orange : AppColors.border,
+                  width: isActive ? 2 : 1,
                 ),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1351,8 +1396,9 @@ class _SummaryRow extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(label.toUpperCase(),
                 style: AppTypography.mono.copyWith(
-                    fontSize: 11, fontWeight: FontWeight.w600,
-                    color: AppColors.ink2)),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.orange)),
           ),
         ),
         Expanded(
@@ -1365,11 +1411,12 @@ class _SummaryRow extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1EFEB),
+                  gradient: AppGradients.cta,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(c,
-                    style: AppTypography.chip.copyWith(fontSize: 11)),
+                    style: AppTypography.chip
+                        .copyWith(fontSize: 11, color: Colors.white)),
               );
             }).toList(),
           ),

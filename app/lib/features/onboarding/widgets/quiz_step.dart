@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 
-/// [chipMode] = false (default): full-width card rows with check icon
-/// [chipMode] = true: pill chips in a Wrap (for multi-select tag style)
+/// Quiz option picker — gradient chips or glass cards.
 class QuizStep extends StatelessWidget {
   final String question;
   final String? subtitle;
@@ -50,21 +50,22 @@ class QuizStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            question,
-            style: GoogleFonts.inter(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: AppColors.gray900,
-              letterSpacing: -0.3,
+          ShaderMask(
+            shaderCallback: (_) =>
+                AppGradients.hero.createShader(const Rect.fromLTWH(0, 0, 280, 40)),
+            child: Text(
+              question,
+              style: GoogleFonts.syne(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                height: 1.1,
+              ),
             ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              subtitle!,
-              style: AppTypography.body.copyWith(color: AppColors.gray500),
-            ),
+            const SizedBox(height: 8),
+            Text(subtitle!, style: AppTypography.body),
           ],
           const SizedBox(height: 24),
           if (chipMode) _buildChips() else _buildCards(),
@@ -73,7 +74,6 @@ class QuizStep extends StatelessWidget {
     );
   }
 
-  // ── Pill chips (multi-select tags) ──────────────────────────────
   Widget _buildChips() {
     return Wrap(
       spacing: 10,
@@ -89,7 +89,6 @@ class QuizStep extends StatelessWidget {
     );
   }
 
-  // ── Full-width cards with check icon ────────────────────────────
   Widget _buildCards() {
     return Column(
       children: List.generate(options.length, (i) {
@@ -106,8 +105,6 @@ class QuizStep extends StatelessWidget {
     );
   }
 }
-
-// ─── Pill chip ────────────────────────────────────────────────────
 
 class _PressableChip extends StatefulWidget {
   final String label;
@@ -129,6 +126,7 @@ class _PressableChipState extends State<_PressableChip> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -137,23 +135,40 @@ class _PressableChipState extends State<_PressableChip> {
       },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
-        scale: _pressed ? 0.95 : 1.0,
+        scale: _pressed ? 0.94 : 1.0,
         duration: const Duration(milliseconds: 100),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
-            color: widget.isSelected ? AppColors.orange500 : AppColors.stone,
+            gradient: widget.isSelected ? AppGradients.cta : null,
+            color: widget.isSelected
+                ? null
+                : (isDark ? AppColorsDark.card : AppColors.gray100),
             borderRadius: BorderRadius.circular(999),
+            border: widget.isSelected
+                ? null
+                : Border.all(
+                    color: isDark ? AppColorsDark.border : AppColors.border,
+                  ),
+            boxShadow: widget.isSelected
+                ? [
+                    BoxShadow(
+                      color: AppColors.orange.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
           ),
           child: Text(
             widget.label,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color:
-                  widget.isSelected ? Colors.white : AppColors.gray700,
+              fontWeight: FontWeight.w700,
+              color: widget.isSelected
+                  ? Colors.white
+                  : AppColors.textPrimary(context),
             ),
           ),
         ),
@@ -161,8 +176,6 @@ class _PressableChipState extends State<_PressableChip> {
     );
   }
 }
-
-// ─── Full-width card ─────────────────────────────────────────────
 
 class _PressableCard extends StatefulWidget {
   final String label;
@@ -184,6 +197,7 @@ class _PressableCardState extends State<_PressableCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) {
@@ -195,30 +209,42 @@ class _PressableCardState extends State<_PressableCard> {
         scale: _pressed ? 0.98 : 1.0,
         duration: const Duration(milliseconds: 100),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: const Duration(milliseconds: 200),
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
           decoration: BoxDecoration(
-            color: widget.isSelected ? AppColors.orange50 : Colors.white,
+            gradient: widget.isSelected ? AppGradients.heroSoft : null,
+            color: widget.isSelected
+                ? null
+                : (isDark ? AppColorsDark.card : AppColors.card),
             border: Border.all(
               color: widget.isSelected
-                  ? AppColors.orange500
-                  : AppColors.gray200,
-              width: 1.5,
+                  ? AppColors.orange
+                  : (isDark ? AppColorsDark.border : AppColors.border),
+              width: widget.isSelected ? 2 : 1,
             ),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: widget.isSelected
+                ? [
+                    BoxShadow(
+                      color: AppColors.orange.withValues(alpha: 0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             children: [
               Expanded(
                 child: Text(
                   widget.label,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
                     color: widget.isSelected
-                        ? AppColors.orange500
-                        : AppColors.gray800,
+                        ? AppColors.orange
+                        : AppColors.textPrimary(context),
                   ),
                 ),
               ),
@@ -226,14 +252,14 @@ class _PressableCardState extends State<_PressableCard> {
                 opacity: widget.isSelected ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 150),
                 child: Container(
-                  width: 22,
-                  height: 22,
+                  width: 26,
+                  height: 26,
                   decoration: const BoxDecoration(
-                    color: AppColors.orange500,
+                    gradient: AppGradients.cta,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.check,
-                      color: Colors.white, size: 14),
+                  child: const Icon(Icons.check_rounded,
+                      color: Colors.white, size: 16),
                 ),
               ),
             ],
