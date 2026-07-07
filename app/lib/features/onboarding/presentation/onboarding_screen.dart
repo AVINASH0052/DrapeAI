@@ -318,8 +318,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     Container(
                       width: 28, height: 28,
                       decoration: const BoxDecoration(
-                        color: AppColors.orange, shape: BoxShape.circle),
-                      child: const Icon(Icons.check, size: 16, color: Colors.white),
+                        gradient: AppGradients.cta,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_rounded, size: 16, color: Colors.white),
                     ),
                 ],
               ),
