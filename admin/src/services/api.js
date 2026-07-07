@@ -44,8 +44,11 @@ export const api = {
 
   getUser: (id) => request(`/admin/users/${id}`),
 
-  suspendUser: (id) =>
-    request(`/admin/users/${id}/suspend`, { method: 'PUT' }),
+  suspendUser: (id, suspended) =>
+    request(`/admin/users/${id}/suspend`, {
+      method: 'PUT',
+      body: JSON.stringify({ suspended }),
+    }),
 
   deleteUser: (id) =>
     request(`/admin/users/${id}`, { method: 'DELETE' }),

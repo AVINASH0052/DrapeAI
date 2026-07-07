@@ -13,6 +13,7 @@ class Item {
   final List<String> seasonTags;
   final bool ethnicFlag;
   final int wearCount;
+  final DateTime? lastWornAt;
   final DateTime createdAt;
 
   Item({
@@ -30,6 +31,7 @@ class Item {
     this.seasonTags = const ['all_season'],
     this.ethnicFlag = false,
     this.wearCount = 0,
+    this.lastWornAt,
     required this.createdAt,
   });
 
@@ -49,6 +51,9 @@ class Item {
       seasonTags: List<String>.from(json['season_tags'] ?? ['all_season']),
       ethnicFlag: json['ethnic_flag'] ?? false,
       wearCount: json['wear_count'] ?? 0,
+      lastWornAt: json['last_worn_at'] != null
+          ? DateTime.parse(json['last_worn_at'])
+          : null,
       createdAt: DateTime.parse(json['created_at']),
     );
   }

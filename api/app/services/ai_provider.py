@@ -12,8 +12,8 @@ Providers supported:
 - Groq (free tier — fast llama-3.3-70b inference)
 
 The provider list per role is configured in app.config.Settings. Spend tracking
-goes through cost_tracker.track_spend() which writes per-provider line items
-to analytics_daily.
+goes through cost_tracker.track_provider_spend() which writes per-provider line
+items to analytics_daily.
 """
 
 from __future__ import annotations

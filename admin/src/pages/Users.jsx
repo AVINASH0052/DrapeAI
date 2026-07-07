@@ -89,11 +89,12 @@ export default function Users() {
 
   const handleSuspend = async (user) => {
     setActionLoading(user.id);
+    const newState = !user.is_suspended;
     try {
-      await api.suspendUser(user.id);
+      await api.suspendUser(user.id, newState);
       setUsers((prev) =>
         prev.map((u) =>
-          u.id === user.id ? { ...u, is_suspended: !u.is_suspended } : u
+          u.id === user.id ? { ...u, is_suspended: newState } : u
         )
       );
     } catch (err) {

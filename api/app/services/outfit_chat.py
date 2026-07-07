@@ -15,6 +15,7 @@ import asyncpg
 from app.database.queries.items import get_items
 from app.services.ai_provider import Role, chat
 from app.services.storage import get_image_url
+from app.utils.llm_json import strip_markdown_fence
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +51,6 @@ Rules:
 - Reasoning must be concise and emoji-free
 - If no swap makes sense, return empty swaps with a brief reason
 """
-
-
-def _strip_md(s: str) -> str:
-    s = s.strip()
-    if s.startswith("```"):
-        s = s.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-    return s
 
 
 def _format_items(items: list[dict]) -> str:
@@ -98,7 +92,7 @@ async def refine_outfit(
     )
 
     result = await chat(Role.CHAT, prompt, max_tokens=400, temp=0.3)
-    raw = _strip_md(result.text)
+    raw = strip_markdown_fence(result.text)
 
     try:
         parsed = json.loads(raw)

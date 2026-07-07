@@ -15,6 +15,7 @@ from collections import Counter
 import asyncpg
 
 from app.services.ai_provider import Role, chat
+from app.utils.llm_json import strip_markdown_fence
 
 logger = logging.getLogger(__name__)
 
@@ -114,9 +115,7 @@ async def analyze_wardrobe_gaps(
     )
 
     result = await chat(Role.REASON, prompt, max_tokens=900, temp=0.4)
-    raw = result.text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+    raw = strip_markdown_fence(result.text)
 
     try:
         gaps = json.loads(raw)

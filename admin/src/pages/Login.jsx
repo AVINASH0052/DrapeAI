@@ -20,11 +20,11 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // For now, store a placeholder token.
-      // Wire up Firebase Admin auth later by replacing this
-      // with a real signInWithEmailAndPassword call.
-      const placeholderToken = btoa(`${email}:${Date.now()}`);
-      localStorage.setItem('admin_token', placeholderToken);
+      // In development, accept any credentials and store the dev bypass token.
+      // In production, replace with a real Firebase Admin signIn call.
+      const isDev = import.meta.env.DEV || import.meta.env.VITE_ENV === 'development';
+      const token = isDev ? 'test-token' : btoa(`${email}:${Date.now()}`);
+      localStorage.setItem('admin_token', token);
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');

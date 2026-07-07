@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_user
 from app.database.pool import get_pool
+from app.models.user import User
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -46,7 +47,7 @@ class CategoryBreakdown(BaseModel):
 
 
 @router.get("/overview", response_model=OverviewStats)
-async def get_analytics_overview(user: dict = Depends(get_current_user)):
+async def get_analytics_overview(user: User = Depends(get_current_user)):
     """Get comprehensive wardrobe analytics overview."""
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -61,7 +62,7 @@ async def get_analytics_overview(user: dict = Depends(get_current_user)):
                 COALESCE(SUM(purchase_price) FILTER (WHERE is_active), 0) AS total_value
             FROM items WHERE user_id = $1
             """,
-            user["uid"],
+            user.id,
         )
 
         # Outfit stats
@@ -73,7 +74,7 @@ async def get_analytics_overview(user: dict = Depends(get_current_user)):
                 COUNT(*) FILTER (WHERE is_worn) AS worn
             FROM outfits WHERE user_id = $1
             """,
-            user["uid"],
+            user.id,
         )
 
         # Category distribution for diversity + most/least worn
@@ -83,7 +84,7 @@ async def get_analytics_overview(user: dict = Depends(get_current_user)):
             FROM items WHERE user_id = $1 AND is_active = TRUE
             GROUP BY category ORDER BY total_wears DESC
             """,
-            user["uid"],
+            user.id,
         )
 
     total = item_stats["total_items"] or 0
@@ -127,7 +128,7 @@ async def get_analytics_overview(user: dict = Depends(get_current_user)):
 @router.get("/wear-history", response_model=list[WearHistoryEntry])
 async def get_wear_history(
     days: int = Query(30, ge=7, le=365),
-    user: dict = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
     """Get daily wear history for the past N days."""
     pool = await get_pool()
@@ -144,7 +145,7 @@ async def get_wear_history(
             GROUP BY worn_date
             ORDER BY worn_date
             """,
-            user["uid"],
+            user.id,
             start_date,
         )
 
@@ -152,7 +153,7 @@ async def get_wear_history(
 
 
 @router.get("/category-breakdown", response_model=list[CategoryBreakdown])
-async def get_category_breakdown(user: dict = Depends(get_current_user)):
+async def get_category_breakdown(user: User = Depends(get_current_user)):
     """Get per-category item count, wear count, value, and cost-per-wear."""
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -168,7 +169,7 @@ async def get_category_breakdown(user: dict = Depends(get_current_user)):
             GROUP BY category
             ORDER BY total_wears DESC
             """,
-            user["uid"],
+            user.id,
         )
 
     return [

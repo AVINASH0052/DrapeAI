@@ -175,6 +175,7 @@ async def get_system_health(conn: asyncpg.Connection) -> dict:
     tables = [
         "users", "preferences", "items", "outfits",
         "outfit_feedback", "lookbooks", "push_tokens", "analytics_daily",
+        "notifications",
     ]
     counts = {}
     for table in tables:

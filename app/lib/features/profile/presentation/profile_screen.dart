@@ -154,6 +154,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  Future<void> _toggleNotifications(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_notifPrefKey, value);
+    if (mounted) setState(() => _notificationsOn = value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(profileStatsProvider);
@@ -561,11 +567,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           : Text('Delete account',
                               style: AppTypography.button
                                   .copyWith(color: AppColors.red)),
-                    ),
-                  ),
-                      child: Text('Delete account',
-                          style: AppTypography.button
-                              .copyWith(color: AppColors.red)),
                     ),
                   ),
                 ],

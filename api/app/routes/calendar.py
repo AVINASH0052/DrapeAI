@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_user
 from app.database.pool import get_pool
+from app.models.user import User
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
@@ -37,7 +38,7 @@ class AssignOutfit(BaseModel):
 @router.get("", response_model=CalendarMonth)
 async def get_calendar_month(
     month: str = Query(..., regex=r"^\d{4}-\d{2}$", description="YYYY-MM"),
-    user: dict = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
     """Get all outfits worn/planned for a month."""
     try:
@@ -61,7 +62,7 @@ async def get_calendar_month(
               AND worn_date < $3
             ORDER BY worn_date
             """,
-            user["uid"],
+            user.id,
             first_day,
             last_day,
         )
@@ -88,7 +89,7 @@ async def get_calendar_month(
 async def assign_outfit_to_date(
     day: str,
     body: AssignOutfit,
-    user: dict = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
     """Assign an outfit to a specific date (wear or plan)."""
     try:
@@ -102,7 +103,7 @@ async def assign_outfit_to_date(
         outfit = await conn.fetchrow(
             "SELECT id FROM outfits WHERE id = $1::uuid AND user_id = $2",
             body.outfit_id,
-            user["uid"],
+            user.id,
         )
         if not outfit:
             raise HTTPException(404, "Outfit not found.")
@@ -134,7 +135,7 @@ async def assign_outfit_to_date(
 @router.delete("/{day}")
 async def remove_outfit_from_date(
     day: str,
-    user: dict = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
     """Remove outfit assignment from a date."""
     try:
@@ -147,7 +148,7 @@ async def remove_outfit_from_date(
         result = await conn.execute(
             """UPDATE outfits SET worn_date = NULL
                WHERE user_id = $1 AND worn_date = $2""",
-            user["uid"],
+            user.id,
             target_date,
         )
 

@@ -10,6 +10,7 @@ import logging
 
 from app.services.ai_provider import Role, chat
 from app.services.personalization import format_feedback_for_prompt
+from app.utils.llm_json import strip_markdown_fence
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +67,6 @@ def _format_candidates(candidates: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _strip_md(content: str) -> str:
-    if content.startswith("```"):
-        content = content.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-    return content
-
-
 async def rank_outfits(
     candidates: list[dict],
     preferences: dict,
@@ -114,7 +109,7 @@ async def rank_outfits(
     for attempt in range(3):
         try:
             result = await chat(Role.RANK, prompt, max_tokens=500, temp=0.3)
-            content = _strip_md(result.text)
+            content = strip_markdown_fence(result.text)
             picks = json.loads(content)
 
             output = []

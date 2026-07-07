@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     onboarding_done BOOLEAN NOT NULL DEFAULT FALSE,
     is_admin        BOOLEAN NOT NULL DEFAULT FALSE,
     is_suspended    BOOLEAN NOT NULL DEFAULT FALSE,
+    suspended_at    TIMESTAMPTZ,
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
     last_login_at   TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -31,16 +32,33 @@ CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NU
 CREATE TABLE IF NOT EXISTS preferences (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id             TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    gender              TEXT NOT NULL,
-    age_range           TEXT NOT NULL,
-    style_goals         TEXT NOT NULL,          -- JSON array
-    color_preferences   TEXT NOT NULL,          -- JSON array
+
+    -- Identity
+    name                TEXT,
+    age                 INTEGER,
+    gender              TEXT,
+    age_range           TEXT,                        -- legacy
+
+    -- Style profile (JSON arrays stored as TEXT)
+    style_goals         TEXT NOT NULL DEFAULT '[]',
+    occasions           TEXT NOT NULL DEFAULT '[]',
+    color_preferences   TEXT NOT NULL DEFAULT '[]',
+    fit_preference      TEXT,
+
+    -- Location / climate
+    location_city       TEXT,
+    climate             TEXT,
+
+    -- Body / budget / lifestyle
     body_type           TEXT,
-    skin_tone           TEXT,
-    budget_range        TEXT,
-    preferred_brands    TEXT NOT NULL DEFAULT '[]',  -- JSON array
-    avoid_colors        TEXT NOT NULL DEFAULT '[]',  -- JSON array
-    location_city       TEXT NOT NULL,
+    skin_undertone      TEXT,                        -- warm | cool | neutral
+    height_cm           INTEGER,
+    budget_tier         TEXT,                        -- budget | mid | luxury
+    lifestyle           TEXT NOT NULL DEFAULT '[]',
+
+    -- Derived
+    style_profile       TEXT,
+
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -225,3 +243,22 @@ CREATE TABLE IF NOT EXISTS analytics_daily (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_analytics_date_metric
     ON analytics_daily(date, metric);
+
+-- ============================================================
+-- notifications
+-- ============================================================
+CREATE TABLE IF NOT EXISTS notifications (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title       TEXT NOT NULL,
+    body        TEXT NOT NULL,
+    type        TEXT NOT NULL DEFAULT 'info',
+    data        TEXT,
+    is_read     BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id
+    ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
+    ON notifications(user_id, is_read) WHERE is_read = FALSE;

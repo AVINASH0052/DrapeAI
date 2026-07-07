@@ -28,7 +28,7 @@ class NotificationsScreen extends ConsumerWidget {
           TextButton(
             onPressed: () async {
               final api = ref.read(apiClientProvider);
-              await api.dio.put('/notifications/read-all');
+              await api.markAllNotificationsRead();
               ref.invalidate(notificationsProvider);
               ref.invalidate(unreadCountProvider);
             },
@@ -91,7 +91,7 @@ class NotificationsScreen extends ConsumerWidget {
                 onTap: () async {
                   if (!isRead) {
                     final api = ref.read(apiClientProvider);
-                    await api.dio.put('/notifications/${notif['id']}/read');
+                    await api.markNotificationRead(notif['id'] as String);
                     ref.invalidate(notificationsProvider);
                     ref.invalidate(unreadCountProvider);
                   }

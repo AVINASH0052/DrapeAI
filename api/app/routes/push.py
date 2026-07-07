@@ -35,3 +35,15 @@ async def register_token(
             req.platform,
         )
     return {"registered": True}
+
+
+@router.delete("/unregister")
+async def unregister_token(user: User = Depends(get_current_user)):
+    """Deactivate all push tokens for the current user (called on sign-out)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE push_tokens SET is_active = FALSE WHERE user_id = $1",
+            user.id,
+        )
+    return {"unregistered": True}

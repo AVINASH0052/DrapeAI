@@ -3,6 +3,8 @@
 import logging
 import random
 
+from fastapi import HTTPException
+
 from app.database.pool import get_pool
 from app.database.queries.items import get_items
 from app.database.queries.preferences import get_preferences
@@ -46,13 +48,9 @@ async def generate_outfits(
         feedback = await get_recent_feedback(conn, user_id, limit=30)
 
     if not prefs:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=400, detail="Complete onboarding first")
 
     if len(items) < 3:
-        from fastapi import HTTPException
-
         raise HTTPException(
             status_code=400, detail="Add at least 3 items to generate outfits"
         )
@@ -112,8 +110,6 @@ async def shuffle_outfit(user_id: str, occasion: str) -> dict:
         items, _ = await get_items(conn, user_id, limit=200)
 
     if not prefs or len(items) < 3:
-        from fastapi import HTTPException
-
         raise HTTPException(
             status_code=400, detail="Need preferences and at least 3 items"
         )

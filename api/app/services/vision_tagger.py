@@ -5,6 +5,7 @@ import json
 import logging
 
 from app.services.ai_provider import Role, vision
+from app.utils.llm_json import strip_markdown_fence
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +36,6 @@ Rules:
 """
 
 
-def _strip_md(content: str) -> str:
-    if content.startswith("```"):
-        content = content.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-    return content
-
-
 async def tag_item(image_bytes: bytes) -> dict:
     """Send image to vision model for tagging. Auto-failover across providers."""
     delays = [3, 8]
@@ -50,7 +45,7 @@ async def tag_item(image_bytes: bytes) -> dict:
         try:
             result = await vision(Role.VISION, image_bytes, VISION_PROMPT,
                                   mime="image/png")
-            content = _strip_md(result.text)
+            content = strip_markdown_fence(result.text)
             tags = json.loads(content)
             logger.info(
                 f"Vision tagging via {result.provider}: "

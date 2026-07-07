@@ -27,6 +27,7 @@ CITY_COORDS = {
 async def get_weather(city: str) -> dict:
     """Get current weather for a city. Uses 1-hour cache in DB."""
     city_lower = city.lower().strip()
+    city_display = city_lower.capitalize()
 
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -39,7 +40,7 @@ async def get_weather(city: str) -> dict:
             datetime.utcnow() - timedelta(hours=1),
         )
         if cached:
-            return {"temp": cached["temp"], "condition": cached["condition"]}
+            return {"temp_c": cached["temp"], "condition": cached["condition"], "city": city_display}
 
     coords = CITY_COORDS.get(city_lower)
     if not coords:
@@ -87,8 +88,8 @@ async def get_weather(city: str) -> dict:
                 condition,
             )
 
-        return {"temp": temp, "condition": condition}
+        return {"temp_c": temp, "condition": condition, "city": city_display}
 
     except Exception as e:
         logger.error(f"Weather fetch failed for {city}: {e}")
-        return {"temp": 25, "condition": "clear"}
+        return {"temp_c": 25, "condition": "clear", "city": city_display}

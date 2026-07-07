@@ -208,6 +208,25 @@ class ApiClient {
     return resp.data as Map<String, dynamic>;
   }
 
+  // --- Notifications ---
+  Future<Map<String, dynamic>> getNotifications({int limit = 50, int offset = 0}) async {
+    final resp = await _dio.get('/notifications', queryParameters: {'limit': limit, 'offset': offset});
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<int> getUnreadCount() async {
+    final resp = await _dio.get('/notifications/unread-count');
+    return resp.data['unread_count'] as int;
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    await _dio.put('/notifications/$id/read');
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await _dio.put('/notifications/read-all');
+  }
+
   // --- Analytics ---
   Future<Map<String, dynamic>> getAnalyticsOverview() async {
     final resp = await _dio.get('/analytics/overview');

@@ -9,16 +9,17 @@ from app.database.pool import get_pool
 logger = logging.getLogger(__name__)
 
 
-async def track_spend(model: str, tokens_in: int, tokens_out: int, cost_usd: float) -> None:
-    """Legacy: record an OpenAI call cost."""
-    await track_provider_spend("openai", model, tokens_in, tokens_out, cost_usd)
-
-
 async def track_provider_spend(
     provider: str, model: str,
-    tokens_in: int, tokens_out: int, cost_usd: float,
+    tokens_in: int | None, tokens_out: int | None, cost_usd: float,
 ) -> None:
-    """Record an AI call cost per provider."""
+    """Record an AI call cost per provider.
+
+    Free-tier providers (NVIDIA, Groq) may return None for token counts.
+    We still record cost if non-zero; token counts are best-effort.
+    """
+    tokens_in = tokens_in or 0
+    tokens_out = tokens_out or 0
     if cost_usd <= 0:
         return
     pool = await get_pool()

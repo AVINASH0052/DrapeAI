@@ -1,4 +1,4 @@
-import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import SystemHealth from './pages/SystemHealth';
@@ -11,8 +11,6 @@ function ProtectedRoute({ children }) {
 }
 
 function Sidebar() {
-  const location = useLocation();
-
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     window.location.href = '/login';

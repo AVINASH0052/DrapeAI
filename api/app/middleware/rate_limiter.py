@@ -137,12 +137,22 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         max_requests, window = _match_path_limit(path)
 
-        # Try Redis first, fall back to in-memory
+        # Try Redis first, fall back to in-memory. A Redis error mid-request
+        # (e.g. connection dropped) must never surface as a 500 — degrade to
+        # the in-memory limiter instead.
         redis = await _get_redis()
         if redis:
-            allowed = await _check_rate_limit_redis(
-                redis, user_id, path, max_requests, window
-            )
+            try:
+                allowed = await _check_rate_limit_redis(
+                    redis, user_id, path, max_requests, window
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Redis rate-limit check failed, falling back to in-memory: {e}"
+                )
+                allowed = await _check_rate_limit_memory(
+                    user_id, path, max_requests, window
+                )
         else:
             allowed = await _check_rate_limit_memory(
                 user_id, path, max_requests, window
