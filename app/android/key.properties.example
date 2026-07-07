@@ -1,0 +1,7 @@
+# Copy to key.properties and fill in for release builds.
+# Do NOT commit key.properties to git.
+
+storePassword=your-keystore-password
+keyPassword=your-key-password
+keyAlias=drapeai
+storeFile=../drapeai-release.keystore

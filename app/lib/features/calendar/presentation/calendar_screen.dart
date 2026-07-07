@@ -11,7 +11,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/constants/environment.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../providers/calendar_provider.dart';
+import '../widgets/calendar_assign_sheet.dart';
 
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
@@ -48,26 +50,24 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final monthName = _monthName(month);
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text('Calendar',
-                        style: GoogleFonts.instrumentSerif(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w400,
-                          color: isDark ? AppColorsDark.ink : AppColors.ink,
-                        )),
+      extendBody: true,
+      body: DrapeMeshBackground(
+        showOrbs: false,
+        child: SafeArea(
+          child: Column(
+            children: [
+              DrapeScreenHeader(
+                title: 'Calendar',
+                subtitle: 'plan your fits',
+                gradientTitle: true,
+                actions: [
+                  DrapeIconButton(
+                    icon: Icons.arrow_back_rounded,
+                    onTap: () => context.pop(),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
 
             // Month navigation
             Padding(
@@ -171,6 +171,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -522,8 +523,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  // Navigate to outfit generation/shuffle
-                  context.pushNamed('shuffle');
+                  final dateIso =
+                      '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
+                  showCalendarAssignSheet(context, dateIso);
                 },
                 child: const Text('Pick an outfit'),
               ),

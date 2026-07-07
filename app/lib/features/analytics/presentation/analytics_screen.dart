@@ -6,7 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../providers/analytics_provider.dart';
 
 class AnalyticsScreen extends ConsumerWidget {
@@ -17,23 +19,22 @@ class AnalyticsScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final overviewAsync = ref.watch(analyticsOverviewProvider);
     final breakdownAsync = ref.watch(categoryBreakdownProvider);
+    final wearAsync = ref.watch(wearHistoryProvider(30));
 
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(0, 14, 0, 28),
-          children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: Text('Analytics',
-                  style: GoogleFonts.instrumentSerif(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w400,
-                    color: isDark ? AppColorsDark.ink : AppColors.ink,
-                  )),
-            ),
-            const SizedBox(height: 20),
+      extendBody: true,
+      body: DrapeMeshBackground(
+        showOrbs: false,
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(0, 14, 0, 28),
+            children: [
+              const DrapeScreenHeader(
+                title: 'Analytics',
+                subtitle: 'how you wear your closet',
+                gradientTitle: true,
+              ),
+            const SizedBox(height: 8),
 
             // Hero utilization card
             overviewAsync.when(
@@ -58,8 +59,22 @@ class AnalyticsScreen extends ConsumerWidget {
               data: (overview) => _buildDiversityCard(overview, isDark),
             ),
 
+            // Wear history
+            const DrapeSectionLabel('Wear history'),
+            wearAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: SizedBox(
+                  height: 80,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+              error: (_, __) => const SizedBox.shrink(),
+              data: (entries) => _buildWearHistory(entries, isDark),
+            ),
+
             // Category breakdown
-            _SectionHead('Category breakdown', isDark: isDark),
+            const DrapeSectionLabel('Category breakdown'),
             breakdownAsync.when(
               loading: () => _buildBreakdownShimmer(isDark),
               error: (_, __) => Padding(
@@ -67,9 +82,67 @@ class AnalyticsScreen extends ConsumerWidget {
                 child: Text('Could not load breakdown',
                     style: AppTypography.body),
               ),
-              data: (data) => _buildCategoryBreakdown(data, isDark),
+              data: (categories) => overviewAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => _buildCategoryBreakdown(categories, isDark),
+                data: (overview) => _buildCategoryBreakdown(
+                  categories,
+                  isDark,
+                  mostWorn: overview['most_worn_category'] as String?,
+                  leastWorn: overview['least_worn_category'] as String?,
+                ),
+              ),
             ),
           ],
+        ),
+      ),
+      ),
+    );
+  }
+
+  Widget _buildWearHistory(List<Map<String, dynamic>> entries, bool isDark) {
+    if (entries.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: DrapeGlassCard(
+          child: Text('No wears logged yet — assign outfits on Calendar',
+              style: AppTypography.body),
+        ),
+      );
+    }
+    final maxWears = entries
+        .map((e) => (e['outfits_worn'] as num?)?.toInt() ?? 0)
+        .fold<int>(1, (a, b) => b > a ? b : a);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: DrapeGlassCard(
+        child: SizedBox(
+          height: 100,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: entries.take(14).map((e) {
+              final wears = (e['outfits_worn'] as num?)?.toInt() ?? 0;
+              final h = (wears / maxWears * 72).clamp(4.0, 72.0);
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Container(
+                        height: h,
+                        decoration: BoxDecoration(
+                          gradient: AppGradients.cta,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
@@ -188,7 +261,7 @@ class AnalyticsScreen extends ConsumerWidget {
   Widget _buildStatsRow(Map<String, dynamic> overview, bool isDark) {
     final items = overview['total_items'] ?? 0;
     final outfits = overview['outfits_saved'] ?? 0;
-    final avgWears = overview['avg_wears'] ?? 0;
+    final avgWears = overview['avg_wear_count'] ?? overview['avg_wears'] ?? 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -305,11 +378,12 @@ class AnalyticsScreen extends ConsumerWidget {
 
   // ─── Category Breakdown ───────────────────────────────────────────
 
-  Widget _buildCategoryBreakdown(Map<String, dynamic> data, bool isDark) {
-    final categories = List<Map<String, dynamic>>.from(
-        data['categories'] ?? const []);
-    final mostWorn = data['most_worn_category'] as String?;
-    final leastWorn = data['least_worn_category'] as String?;
+  Widget _buildCategoryBreakdown(
+    List<Map<String, dynamic>> categories,
+    bool isDark, {
+    String? mostWorn,
+    String? leastWorn,
+  }) {
 
     // Find max item count for bar scaling
     int maxItems = 1;

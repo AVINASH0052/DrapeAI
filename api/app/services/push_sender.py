@@ -51,3 +51,32 @@ async def send_daily_outfit_push(user_id: str, message_body: str) -> bool:
             logger.error(f"Push failed for user {user_id}: {e}")
 
     return True
+
+
+async def send_daily_outfit_pushes_batch() -> int:
+    """Send morning outfit reminder to all users with active push tokens.
+
+    Called by ARQ cron. Returns count of users notified.
+    """
+    _init_firebase()
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        user_ids = await conn.fetch(
+            """
+            SELECT DISTINCT user_id FROM push_tokens WHERE is_active = TRUE
+            """
+        )
+
+    sent = 0
+    body = "Your outfit for today is ready — open DrapeAI to see it."
+    for row in user_ids:
+        uid = row["user_id"]
+        try:
+            ok = await send_daily_outfit_push(uid, body)
+            if ok:
+                sent += 1
+        except Exception as e:
+            logger.error(f"Morning push failed for {uid}: {e}")
+
+    return sent
