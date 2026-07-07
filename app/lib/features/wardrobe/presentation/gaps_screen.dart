@@ -7,6 +7,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 
+import '../../../core/widgets/drape_ui.dart';
+
 class GapsScreen extends ConsumerStatefulWidget {
   const GapsScreen({super.key});
 

@@ -4,44 +4,33 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 
+import '../../../core/widgets/drape_ui.dart';
+
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(0, 14, 0, 28),
-          children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: Row(
-                children: [
-                  GestureDetector(
+      extendBody: true,
+      body: DrapeMeshBackground(
+        showOrbs: false,
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(0, 14, 0, 28),
+            children: [
+              DrapeScreenHeader(
+                title: 'About',
+                subtitle: 'drape.ai · your wardrobe stylist',
+                gradientTitle: true,
+                actions: [
+                  DrapeIconButton(
+                    icon: Icons.arrow_back_rounded,
                     onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(Icons.arrow_back,
-                          size: 18, color: AppColors.ink),
-                    ),
                   ),
-                  const SizedBox(width: 12),
-                  Text('About',
-                      style: GoogleFonts.instrumentSerif(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.ink,
-                      )),
                 ],
               ),
-            ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
             // Logo / brand
             Center(
@@ -145,6 +134,7 @@ class AboutScreen extends StatelessWidget {
             const SizedBox(height: 28),
           ],
         ),
+      ),
       ),
     );
   }
