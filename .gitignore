@@ -30,6 +30,10 @@ app/build/
 app/.packages
 app/pubspec.lock
 
+# Admin (Node)
+admin/node_modules/
+admin/dist/
+
 # Dart
 *.dart.js
 *.part.js

@@ -3,33 +3,31 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/drape_ui.dart';
 
 class GratificationDialog extends StatelessWidget {
   const GratificationDialog({super.key});
 
   static const _prefKey = 'gratification_shown';
 
-  /// Returns `true` if the dialog has never been shown before.
   static Future<bool> shouldShow() async {
     final prefs = await SharedPreferences.getInstance();
     return !(prefs.getBool(_prefKey) ?? false);
   }
 
-  /// Marks the dialog as shown so it won't appear again.
   static Future<void> markShown() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefKey, true);
   }
 
-  /// Convenience: show the dialog and persist the flag.
   static Future<void> present(BuildContext context) async {
     await markShown();
     if (!context.mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black54,
       builder: (_) => const GratificationDialog(),
     );
   }
@@ -37,67 +35,43 @@ class GratificationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      child: DrapeGlassCard(
+        gradientBorder: true,
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Emoji icon
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.orangeSoft,
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: Text('🎉', style: TextStyle(fontSize: 28)),
-              ),
-            ),
-            const SizedBox(height: 18),
+            const Text('🔥', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 16),
             Text(
-              'Three items added!',
-              style: GoogleFonts.instrumentSerif(
-                fontSize: 22,
-                color: AppColors.ink,
+              '3 pieces. let\'s cook.',
+              style: GoogleFonts.syne(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                height: 1.1,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
             Text(
-              'You have enough for your first AI outfit. '
-              'Ready to see what we can put together?',
+              'Your closet has enough for your first AI fit. Ready to see the magic?',
               textAlign: TextAlign.center,
               style: AppTypography.body,
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  context.go('/today');
-                },
-                child: Text('Generate Outfit',
-                    style: AppTypography.button
-                        .copyWith(color: Colors.white)),
-              ),
+            DrapeGradientButton(
+              label: 'Show me fits ✨',
+              onPressed: () {
+                Navigator.of(context).pop();
+                context.go('/today');
+              },
             ),
-            const SizedBox(height: 6),
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('Keep Adding',
-                    style: AppTypography.button
-                        .copyWith(color: AppColors.ink2)),
-              ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('keep adding', style: AppTypography.caption),
             ),
           ],
         ),

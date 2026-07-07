@@ -16,6 +16,7 @@ import '../../features/lookbooks/presentation/lookbooks_screen.dart';
 import '../../features/lookbooks/presentation/lookbook_detail_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/about_screen.dart';
+import '../../features/profile/presentation/legal_screens.dart';
 import '../../features/calendar/presentation/calendar_screen.dart';
 import '../../features/analytics/presentation/analytics_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
@@ -144,6 +145,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/about',
         name: 'about',
         builder: (_, __) => const AboutScreen(),
+      ),
+      GoRoute(
+        path: '/privacy',
+        name: 'privacy',
+        builder: (_, __) => const PrivacyScreen(),
+      ),
+      GoRoute(
+        path: '/terms',
+        name: 'terms',
+        builder: (_, __) => const TermsScreen(),
       ),
       GoRoute(
         path: '/notifications',

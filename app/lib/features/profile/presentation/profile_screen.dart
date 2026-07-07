@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -9,11 +10,14 @@ import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/theme_provider.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_stats_provider.dart';
+import '../providers/user_profile_provider.dart';
 import '../widgets/edit_profile_sheet.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -38,24 +42,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _loadNotificationPref() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
-      setState(() {
-        _notificationsOn = prefs.getBool(_notifPrefKey) ?? false;
-      });
+      setState(() => _notificationsOn = prefs.getBool(_notifPrefKey) ?? false);
     }
   }
 
-  Future<void> _openEditProfile() async {
+  Future<void> _openEditProfile(String name) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.bg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) => const EditProfileSheet(currentName: 'Avinash'),
+      backgroundColor: Colors.transparent,
+      builder: (_) => EditProfileSheet(currentName: name),
     );
     if (result == true) {
       ref.invalidate(profileStatsProvider);
+      ref.invalidate(userProfileProvider);
     }
   }
 
@@ -63,29 +63,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14)),
+        backgroundColor: AppColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Delete your account?',
-            style: GoogleFonts.instrumentSerif(
-              fontSize: 20, color: AppColors.ink)),
+            style: AppTypography.headingSerif.copyWith(fontSize: 22)),
         content: Text(
-          'This cannot be undone. All your wardrobe items, '
-          'outfits, and data will be permanently removed.',
+          'All wardrobe items, outfits, and data will be permanently removed.',
           style: AppTypography.body,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel',
-                style: AppTypography.button
-                    .copyWith(color: AppColors.ink2)),
+            child: Text('Cancel', style: AppTypography.button),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text('Delete',
-                style:
-                    AppTypography.button.copyWith(color: AppColors.red)),
+                style: AppTypography.button.copyWith(color: AppColors.red)),
           ),
         ],
       ),
@@ -101,14 +95,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (result == 'requires-recent-login') {
         setState(() => _deletingAccount = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-                'Please sign in again before deleting your account.'),
+          const SnackBar(
+            content: Text('Please sign in again before deleting your account.'),
             backgroundColor: AppColors.red,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
         return;
@@ -120,16 +109,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           SnackBar(
             content: Text('Failed to delete account: $result'),
             backgroundColor: AppColors.red,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
         return;
       }
 
-      // Success
       context.go('/login');
     } catch (e) {
       if (!mounted) return;
@@ -138,19 +122,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         SnackBar(
           content: Text('Failed to delete account: $e'),
           backgroundColor: AppColors.red,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
-    }
-  }
-
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -158,445 +131,453 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_notifPrefKey, value);
     if (mounted) setState(() => _notificationsOn = value);
+
+    if (value) {
+      try {
+        final messaging = FirebaseMessaging.instance;
+        await messaging.requestPermission();
+        final token = await messaging.getToken();
+        if (token != null) {
+          final platform = Platform.isIOS ? 'ios' : 'android';
+          await ref.read(apiClientProvider).registerPushToken(token, platform);
+        }
+      } catch (_) {}
+    } else {
+      try {
+        await ref.read(apiClientProvider).unregisterPushToken();
+      } catch (_) {}
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(profileStatsProvider);
+    final profileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(0, 14, 0, 28),
-          children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text('Profile',
-                        style: GoogleFonts.instrumentSerif(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.ink,
-                        )),
-                  ),
-                  GestureDetector(
-                    onTap: _openEditProfile,
-                    child: Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border),
+      extendBody: true,
+      body: DrapeMeshBackground(
+        showOrbs: false,
+        child: SafeArea(
+          bottom: false,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(0, 14, 0, 100),
+            children: [
+              DrapeScreenHeader(
+                title: 'You',
+                subtitle: 'your style DNA',
+                gradientTitle: true,
+                actions: [
+                  profileAsync.whenOrNull(
+                        data: (p) => DrapeIconButton(
+                          icon: Icons.edit_outlined,
+                          onTap: () => _openEditProfile(p.displayName),
+                        ),
+                      ) ??
+                      DrapeIconButton(
+                        icon: Icons.edit_outlined,
+                        onTap: () => _openEditProfile(''),
                       ),
-                      child: const Icon(Icons.edit_outlined, size: 18,
-                          color: AppColors.ink),
-                    ),
-                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // Avatar + name
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Container(
-                    width: 72, height: 72,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [AppColors.orangeSoft, AppColors.pinkSoft],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text('A',
-                          style: GoogleFonts.instrumentSerif(
-                            fontSize: 28, color: AppColors.ink)),
-                    ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: profileAsync.when(
+                  loading: () => _buildAvatarShimmer(),
+                  error: (_, __) => _buildAvatar('?', 'Stylist', ''),
+                  data: (profile) => _buildAvatar(
+                    profile.initials,
+                    profile.displayName,
+                    profile.memberSince,
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+              ),
+              const DrapeSectionLabel('Style profile'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: DrapeGlassCard(
+                  child: profileAsync.when(
+                    loading: () => const SizedBox(height: 40),
+                    error: (_, __) => const Text('Could not load style profile'),
+                    data: (profile) => Column(
                       children: [
-                        Text('Avinash',
-                            style: GoogleFonts.instrumentSerif(
-                              fontSize: 24, color: AppColors.ink, height: 1)),
-                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: (profile.styleTags.isEmpty
+                                  ? ['Take the style quiz →']
+                                  : profile.styleTags)
+                              .map((c) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      gradient: profile.styleTags.isEmpty
+                                          ? null
+                                          : AppGradients.cta,
+                                      color: profile.styleTags.isEmpty
+                                          ? AppColors.gray100
+                                          : null,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      c,
+                                      style: AppTypography.chip.copyWith(
+                                        fontSize: 11,
+                                        color: profile.styleTags.isEmpty
+                                            ? AppColors.ink3
+                                            : Colors.white,
+                                      ),
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                        const Divider(height: 24),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 9, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: AppColors.orangeSoft,
-                                borderRadius: BorderRadius.circular(999),
+                            Text('vibe check?', style: AppTypography.caption),
+                            GestureDetector(
+                              onTap: () => context.push('/onboarding'),
+                              child: Text(
+                                'Retake quiz',
+                                style: AppTypography.label
+                                    .copyWith(color: AppColors.orange),
                               ),
-                              child: Text('Free',
-                                  style: AppTypography.mono.copyWith(
-                                      color: AppColors.orange,
-                                      fontSize: 10.5)),
                             ),
-                            const SizedBox(width: 8),
-                            Text('· member since Mar 2026',
-                                style: AppTypography.caption),
                           ],
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            // Style profile
-            _SectionHead('Style profile'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Column(
-                  children: [
-                    Wrap(
-                      spacing: 6, runSpacing: 6,
-                      children: ['Men', 'Minimalist', 'Classic', 'Casual',
-                          'Neutrals', 'Regular', 'Mumbai']
-                          .map((c) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1EFEB),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(c,
-                                    style: AppTypography.chip
-                                        .copyWith(fontSize: 11)),
-                              ))
-                          .toList(),
-                    ),
-                    const Divider(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Want different suggestions?',
-                            style: AppTypography.caption),
-                        GestureDetector(
-                          onTap: () => context.push('/onboarding'),
-                          child: Text('Retake quiz',
-                              style: AppTypography.label.copyWith(
-                                  color: AppColors.orange, fontSize: 13)),
-                        ),
-                      ],
-                    ),
-                  ],
                 ),
               ),
-            ),
-
-            // Wardrobe stats — live from API
-            _SectionHead('Wardrobe'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: statsAsync.when(
-                  loading: () => Row(
-                    children: List.generate(3, (_) => Expanded(
-                      child: Shimmer.fromColors(
-                        baseColor: AppColors.border,
-                        highlightColor: AppColors.bgWarm,
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 36, height: 28,
-                              decoration: BoxDecoration(
-                                color: AppColors.card,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              width: 48, height: 12,
-                              decoration: BoxDecoration(
-                                color: AppColors.card,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ],
-                        ),
+              const DrapeSectionLabel('Wardrobe'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: DrapeGlassCard(
+                  child: statsAsync.when(
+                    loading: () => Row(
+                      children: List.generate(
+                        3,
+                        (_) => Expanded(child: _statShimmer()),
                       ),
-                    )),
-                  ),
-                  error: (_, __) => Row(
-                    children: const [
-                      _StatBlock(value: '—', label: 'Items'),
-                      _StatBlock(value: '—', label: 'Saved'),
-                      _StatBlock(value: '—', label: 'In rotation'),
-                    ],
-                  ),
-                  data: (stats) => Row(
-                    children: [
-                      _StatBlock(
-                          value: '${stats.totalItems}', label: 'Items'),
-                      _StatBlock(
-                          value: '${stats.savedOutfits}', label: 'Saved'),
-                      _StatBlock(
-                          value: '${stats.utilizationPct}%',
-                          label: 'In rotation'),
-                    ],
+                    ),
+                    error: (_, __) => const Row(
+                      children: [
+                        _StatBlock(value: '—', label: 'Pieces'),
+                        _StatBlock(value: '—', label: 'Saved'),
+                        _StatBlock(value: '—', label: 'Rotation'),
+                      ],
+                    ),
+                    data: (stats) => Row(
+                      children: [
+                        _StatBlock(
+                            value: '${stats.totalItems}', label: 'Pieces'),
+                        _StatBlock(
+                            value: '${stats.savedOutfits}', label: 'Saved'),
+                        _StatBlock(
+                            value: '${stats.utilizationPct}%',
+                            label: 'Rotation'),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-
-            // AI Insights
-            _SectionHead('AI insights'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: GestureDetector(
-                onTap: () => context.pushNamed('wardrobe_gaps'),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    border: Border.all(color: AppColors.border),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+              const DrapeSectionLabel('AI insights'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: DrapeGlassCard(
+                  gradientBorder: true,
+                  onTap: () => context.pushNamed('wardrobe_gaps'),
                   child: Row(
                     children: [
                       Container(
-                        width: 44, height: 44,
-                        decoration: const BoxDecoration(
-                          color: AppColors.orangeSoft,
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: AppGradients.cta,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.auto_awesome,
-                            size: 22, color: AppColors.orange),
+                        child: const Icon(Icons.auto_awesome_rounded,
+                            color: Colors.white, size: 24),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('What should I buy next?',
-                                style: AppTypography.label.copyWith(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.ink)),
-                            Text(
-                                'AI-curated wardrobe gap analysis',
+                            Text('what to buy next?',
+                                style: AppTypography.title.copyWith(fontSize: 16)),
+                            Text('AI gap analysis for your closet',
                                 style: AppTypography.caption),
                           ],
                         ),
                       ),
-                      const Icon(Icons.chevron_right,
-                          size: 18, color: AppColors.ink3),
+                      Icon(Icons.chevron_right_rounded,
+                          color: AppColors.textMuted(context)),
                     ],
                   ),
                 ),
               ),
-            ),
-
-            // Preferences
-            _SectionHead('Preferences'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Column(
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Row(
                   children: [
-                    _SettingRow(
-                      label: 'Morning outfit notification',
-                      trailing: GestureDetector(
-                        onTap: () => _toggleNotifications(!_notificationsOn),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 46, height: 28,
-                          decoration: BoxDecoration(
-                            color: _notificationsOn
-                                ? AppColors.orange
-                                : AppColors.borderStrong,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: AnimatedAlign(
-                            duration: const Duration(milliseconds: 200),
-                            alignment: _notificationsOn
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: Container(
-                              width: 24, height: 24,
-                              margin: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.2),
-                                    blurRadius: 3,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => ref.read(themeModeProvider.notifier).cycle(),
-                      child: _SettingRow(
-                        label: 'Appearance',
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+                    Expanded(
+                      child: DrapeGlassCard(
+                        onTap: () => context.pushNamed('calendar'),
+                        padding: const EdgeInsets.all(14),
+                        child: const Column(
                           children: [
-                            Text(
-                              switch (ref.watch(themeModeProvider)) {
-                                ThemeMode.light => 'Light',
-                                ThemeMode.dark => 'Dark',
-                                ThemeMode.system => 'System',
-                              },
-                              style: AppTypography.caption
-                                  .copyWith(color: AppColors.ink2),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.chevron_right,
-                                size: 14, color: AppColors.ink3),
+                            Text('📅', style: TextStyle(fontSize: 24)),
+                            SizedBox(height: 6),
+                            Text('Calendar', style: TextStyle(fontWeight: FontWeight.w700)),
                           ],
                         ),
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => context.push('/about'),
-                      child: _SettingRow(
-                        label: 'About drape.ai',
-                        trailing: const Icon(Icons.chevron_right,
-                            size: 16, color: AppColors.ink3),
-                        last: true,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: DrapeGlassCard(
+                        onTap: () => context.pushNamed('analytics'),
+                        padding: const EdgeInsets.all(14),
+                        child: const Column(
+                          children: [
+                            Text('📊', style: TextStyle(fontSize: 24)),
+                            SizedBox(height: 6),
+                            Text('Stats', style: TextStyle(fontWeight: FontWeight.w700)),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-
-            // Help & legal
-            _SectionHead('Help & legal'),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(14),
+              const DrapeSectionLabel('Preferences'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: DrapeGlassCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      _SettingRow(
+                        label: 'Morning fit notification',
+                        trailing: _NotifToggle(
+                          on: _notificationsOn,
+                          onChanged: _toggleNotifications,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () =>
+                            ref.read(themeModeProvider.notifier).cycle(),
+                        child: _SettingRow(
+                          label: 'Appearance',
+                          trailing: Text(
+                            switch (ref.watch(themeModeProvider)) {
+                              ThemeMode.light => 'Light ☀️',
+                              ThemeMode.dark => 'Dark 🌙',
+                              ThemeMode.system => 'Auto',
+                            },
+                            style: AppTypography.caption,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => context.push('/about'),
+                        child: const _SettingRow(
+                          label: 'About drape.ai',
+                          trailing: Icon(Icons.chevron_right_rounded, size: 18),
+                          last: true,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              ),
+              const DrapeSectionLabel('Help & legal'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: DrapeGlassCard(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      GestureDetector(
+                        onTap: () => context.push('/privacy'),
+                        child: const _SettingRow(
+                          label: 'Privacy Policy',
+                          trailing: Icon(Icons.chevron_right_rounded, size: 18),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => context.push('/terms'),
+                        child: const _SettingRow(
+                          label: 'Terms of Service',
+                          trailing: Icon(Icons.chevron_right_rounded, size: 18),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => launchUrl(
+                          Uri.parse('mailto:help@drapeai.app'),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                        child: const _SettingRow(
+                          label: 'Help & feedback',
+                          trailing: Icon(Icons.chevron_right_rounded, size: 18),
+                          last: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    GestureDetector(
-                      onTap: () =>
-                          _launchUrl('https://drapeai.app/terms'),
-                      child: const _SettingRow(
-                        label: 'Terms & Privacy',
-                        trailing: Icon(Icons.chevron_right,
-                            size: 16, color: AppColors.ink3),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () =>
-                          _launchUrl('mailto:help@drapeai.app'),
-                      child: const _SettingRow(
-                        label: 'Help & feedback',
-                        trailing: Icon(Icons.chevron_right,
-                            size: 16, color: AppColors.ink3),
-                        last: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-            // Sign out / Delete
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity, height: 50,
-                    child: TextButton(
+                    OutlinedButton(
                       onPressed: () {
                         ref.read(authStatusProvider.notifier).logout();
                         context.go('/login');
                       },
-                      child: Text('Sign out',
-                          style: AppTypography.button
-                              .copyWith(color: AppColors.ink2)),
+                      child: const Text('Sign out'),
                     ),
-                  ),
-                  SizedBox(
-                    width: double.infinity, height: 50,
-                    child: TextButton(
+                    const SizedBox(height: 8),
+                    TextButton(
                       onPressed: _deletingAccount ? null : _deleteAccount,
                       child: _deletingAccount
                           ? const SizedBox(
-                              height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: AppColors.red),
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : Text('Delete account',
+                          : Text(
+                              'Delete account',
                               style: AppTypography.button
-                                  .copyWith(color: AppColors.red)),
+                                  .copyWith(color: AppColors.red),
+                            ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: Text('drape.ai · v1.0.0',
-                  style: AppTypography.mono.copyWith(
-                      fontSize: 10, color: AppColors.ink3.withValues(alpha: 0.5))),
-            ),
-          ],
+              Center(
+                child: Text(
+                  'drape.ai · v1.0.0',
+                  style: AppTypography.mono.copyWith(fontSize: 10),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
-class _SectionHead extends StatelessWidget {
-  final String text;
-  const _SectionHead(this.text);
+  Widget _buildAvatar(String initials, String name, String memberSince) {
+    return Row(
+      children: [
+        Container(
+          width: 76,
+          height: 76,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: AppGradients.hero,
+          ),
+          padding: const EdgeInsets.all(2.5),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.surface(context),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              initials,
+              style: GoogleFonts.syne(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary(context),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name, style: AppTypography.headingSerif.copyWith(fontSize: 26)),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.cta,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'FREE',
+                      style: AppTypography.mono.copyWith(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  if (memberSince.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(memberSince, style: AppTypography.caption),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-      child: Text(text.toUpperCase(),
-          style: AppTypography.mono.copyWith(
-              fontSize: 11, fontWeight: FontWeight.w600,
-              color: AppColors.ink2, letterSpacing: 0.8)),
+  Widget _buildAvatarShimmer() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.border,
+      highlightColor: AppColors.bgWarm,
+      child: Row(
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: const BoxDecoration(
+              color: AppColors.card,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                  width: 120, height: 24, color: AppColors.card),
+              const SizedBox(height: 8),
+              Container(width: 80, height: 14, color: AppColors.card),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statShimmer() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.border,
+      highlightColor: AppColors.bgWarm,
+      child: Column(
+        children: [
+          Container(width: 36, height: 28, color: AppColors.card),
+          const SizedBox(height: 6),
+          Container(width: 48, height: 12, color: AppColors.card),
+        ],
+      ),
     );
   }
 }
@@ -611,9 +592,19 @@ class _StatBlock extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Text(value,
-              style: GoogleFonts.instrumentSerif(
-                fontSize: 28, color: AppColors.ink, height: 1)),
+          ShaderMask(
+            shaderCallback: (_) =>
+                AppGradients.cta.createShader(const Rect.fromLTWH(0, 0, 60, 40)),
+            child: Text(
+              value,
+              style: GoogleFonts.syne(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                height: 1,
+              ),
+            ),
+          ),
           const SizedBox(height: 4),
           Text(label, style: AppTypography.caption),
         ],
@@ -640,8 +631,13 @@ class _SettingRow extends StatelessWidget {
       decoration: BoxDecoration(
         border: last
             ? null
-            : const Border(
-                bottom: BorderSide(color: AppColors.border)),
+            : Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColorsDark.border
+                      : AppColors.border,
+                ),
+              ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -649,6 +645,43 @@ class _SettingRow extends StatelessWidget {
           Text(label, style: AppTypography.label.copyWith(fontSize: 14)),
           trailing,
         ],
+      ),
+    );
+  }
+}
+
+class _NotifToggle extends StatelessWidget {
+  final bool on;
+  final ValueChanged<bool> onChanged;
+
+  const _NotifToggle({required this.on, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!on),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 50,
+        height: 30,
+        decoration: BoxDecoration(
+          gradient: on ? AppGradients.cta : null,
+          color: on ? null : AppColors.borderStrong,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 200),
+          alignment: on ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 26,
+            height: 26,
+            margin: const EdgeInsets.all(2),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
       ),
     );
   }

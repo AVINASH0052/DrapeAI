@@ -5,6 +5,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/router/app_router.dart';
+import 'core/providers/connectivity_provider.dart';
+import 'core/widgets/drape_ui.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -23,6 +25,8 @@ class DrapeAIApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final isOffline = ref.watch(isOfflineProvider);
+
     return MaterialApp.router(
       title: 'DrapeAI',
       debugShowCheckedModeBanner: false,
@@ -30,6 +34,14 @@ class DrapeAIApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       routerConfig: router,
+      builder: (context, child) {
+        return Column(
+          children: [
+            DrapeOfflineBanner(isOffline: isOffline),
+            Expanded(child: child ?? const SizedBox.shrink()),
+          ],
+        );
+      },
     );
   }
 }

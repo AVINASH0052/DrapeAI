@@ -1,103 +1,116 @@
 import 'package:flutter/material.dart';
 
+/// DrapeAI — "Midnight Masala" palette.
+/// Saffron heat × neon Gen Z × global streetwear. Works in Mumbai and Manhattan.
 class AppColors {
   AppColors._();
 
-  // Surfaces
-  static const bg = Color(0xFFFAFAF9);
-  static const bgWarm = Color(0xFFF5F4F0);
+  // Surfaces — warm cream light, deep cosmic dark
+  static const bg = Color(0xFFFDF6EE);
+  static const bgWarm = Color(0xFFF5EBE0);
   static const card = Color(0xFFFFFFFF);
-  static const border = Color(0xFFE7E5E0);
-  static const borderStrong = Color(0xFFD6D3CC);
+  static const border = Color(0xFFE8DDD0);
+  static const borderStrong = Color(0xFFD4C4B4);
 
-  // Legacy surface aliases
-  static const stone = Color(0xFFE8E4DF);
-  static const stoneMid = Color(0xFFD5CFC8);
+  static const stone = Color(0xFFEDE4D8);
+  static const stoneMid = Color(0xFFD9CFC2);
 
-  // Ink (text)
-  static const ink = Color(0xFF181715);
-  static const ink2 = Color(0xFF5F5C57);
-  static const ink3 = Color(0xFF9A958C);
-  static const ink4 = Color(0xFFC9C5BD);
+  // Ink
+  static const ink = Color(0xFF0C0A14);
+  static const ink2 = Color(0xFF4A4458);
+  static const ink3 = Color(0xFF8A8299);
+  static const ink4 = Color(0xFFC4BCC8);
 
-  // Legacy gray aliases
   static const gray900 = ink;
-  static const gray800 = Color(0xFF2D2D2D);
-  static const gray700 = Color(0xFF3D3D3D);
+  static const gray800 = Color(0xFF1E1A28);
+  static const gray700 = Color(0xFF2E2838);
   static const gray500 = ink2;
   static const gray400 = ink3;
-  static const gray300 = Color(0xFFD1D5DB);
+  static const gray300 = Color(0xFFD4C4B4);
   static const gray200 = border;
-  static const gray100 = Color(0xFFF3F4F6);
-  static const gray50 = Color(0xFFF9FAFB);
+  static const gray100 = Color(0xFFF0E8DE);
+  static const gray50 = Color(0xFFFAF4EC);
 
-  // Orange accent
-  static const orange = Color(0xFFF97316);
-  static const orangeSoft = Color(0xFFFFF1E6);
+  // Primary accent — saffron blaze (India energy)
+  static const orange = Color(0xFFFF5C00);
+  static const orangeSoft = Color(0xFFFFEDE3);
   static const orange500 = orange;
-  static const orange400 = Color(0xFFFB923C);
-  static const orange600 = Color(0xFFEA580C);
+  static const orange400 = Color(0xFFFF7A33);
+  static const orange600 = Color(0xFFE04E00);
   static const orange50 = orangeSoft;
 
-  // Additional accents
-  static const pink = Color(0xFFEC4899);
-  static const pinkSoft = Color(0xFFFCE7F3);
-  static const lime = Color(0xFF84CC16);
-  static const limeSoft = Color(0xFFECFCCB);
-  static const lavender = Color(0xFFA78BFA);
-  static const lavenderSoft = Color(0xFFEDE9FE);
+  // Gen Z pops
+  static const pink = Color(0xFFFF006E);
+  static const pinkSoft = Color(0xFFFFE8F2);
+  static const lime = Color(0xFF00E5A0);
+  static const limeSoft = Color(0xFFE0FFF5);
+  static const lavender = Color(0xFF7B2FF7);
+  static const lavenderSoft = Color(0xFFF0E8FF);
+  static const gold = Color(0xFFFFC947);
+  static const goldSoft = Color(0xFFFFF5D6);
+  static const teal = Color(0xFF00C9B7);
+  static const tealSoft = Color(0xFFE0FAF7);
 
   // Semantic
-  static const red = Color(0xFFE11D48);
+  static const red = Color(0xFFFF2D55);
   static const red500 = red;
-  static const red50 = Color(0xFFFEF2F2);
-  static const green500 = Color(0xFF22C55E);
-  static const green50 = Color(0xFFF0FDF4);
-  static const amber500 = Color(0xFFF59E0B);
-  static const amber50 = Color(0xFFFFFBEB);
+  static const red50 = Color(0xFFFFE8EC);
+  static const green500 = Color(0xFF00E5A0);
+  static const green50 = Color(0xFFE0FFF5);
+  static const amber500 = Color(0xFFFFC947);
+  static const amber50 = Color(0xFFFFF5D6);
 
-  // Backward-compatible aliases
-  static const indigo500 = orange;
-  static const indigo50 = orangeSoft;
+  static const indigo500 = lavender;
+  static const indigo50 = lavenderSoft;
+
+  /// Theme-aware surface helpers
+  static Color surface(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? AppColorsDark.card
+          : card;
+
+  static Color textPrimary(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? AppColorsDark.ink
+          : ink;
+
+  static Color textMuted(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? AppColorsDark.ink3
+          : ink3;
 }
 
-/// Dark mode color palette.
 class AppColorsDark {
   AppColorsDark._();
 
-  // Surfaces
-  static const bg = Color(0xFF121110);
-  static const bgWarm = Color(0xFF1A1918);
-  static const card = Color(0xFF1E1D1C);
-  static const border = Color(0xFF2E2C2A);
-  static const borderStrong = Color(0xFF3D3A37);
+  static const bg = Color(0xFF0C0A14);
+  static const bgWarm = Color(0xFF12101C);
+  static const card = Color(0xFF16131F);
+  static const border = Color(0xFF2A2535);
+  static const borderStrong = Color(0xFF3D3648);
 
-  // Ink (text — inverted hierarchy for dark mode)
-  static const ink = Color(0xFFF5F3F0);
-  static const ink2 = Color(0xFFB5B0A8);
-  static const ink3 = Color(0xFF7A756D);
-  static const ink4 = Color(0xFF4A4640);
+  static const ink = Color(0xFFF8F4FF);
+  static const ink2 = Color(0xFFB8B0C8);
+  static const ink3 = Color(0xFF6E6680);
+  static const ink4 = Color(0xFF3D3848);
 
-  // Orange accent (slightly brighter for dark backgrounds)
-  static const orange = Color(0xFFFB923C);
-  static const orangeSoft = Color(0xFF2D1D0E);
+  static const orange = Color(0xFFFF6B2C);
+  static const orangeSoft = Color(0xFF2A1408);
 
-  // Accent soft tones for dark mode
-  static const pinkSoft = Color(0xFF2D1424);
-  static const limeSoft = Color(0xFF1A2D0E);
-  static const lavenderSoft = Color(0xFF1E1630);
+  static const pinkSoft = Color(0xFF2A0818);
+  static const limeSoft = Color(0xFF082A1E);
+  static const lavenderSoft = Color(0xFF1A0E30);
+  static const goldSoft = Color(0xFF2A2008);
+  static const tealSoft = Color(0xFF082A26);
 
-  // Semantic
-  static const red = Color(0xFFF43F5E);
-  static const red50 = Color(0xFF2D1418);
-  static const green500 = Color(0xFF34D399);
-  static const green50 = Color(0xFF0D2D1E);
-  static const amber500 = Color(0xFFFBBF24);
-  static const amber50 = Color(0xFF2D2410);
+  static const red = Color(0xFFFF4D6D);
+  static const red50 = Color(0xFF2A0A12);
+  static const green500 = Color(0xFF00E5A0);
+  static const green50 = Color(0xFF082A1E);
+  static const amber500 = Color(0xFFFFD060);
+  static const amber50 = Color(0xFF2A2008);
 
-  // Gray aliases (dark variants)
   static const gray900 = ink;
-  static const gray100 = Color(0xFF252321);
-  static const gray50 = Color(0xFF1A1918);
+  static const gray100 = Color(0xFF1E1A28);
+  static const gray50 = Color(0xFF12101C);
 }
-
