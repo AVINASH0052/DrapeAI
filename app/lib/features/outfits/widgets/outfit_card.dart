@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/constants/environment.dart';
@@ -26,38 +27,51 @@ class _OutfitCardState extends ConsumerState<OutfitCard> {
   @override
   Widget build(BuildContext context) {
     final outfit = widget.outfit;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.card,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(22),
+        gradient: AppGradients.hero,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.orange.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          // AI accent border
-          Container(height: 2, color: AppColors.orange),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Header row
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 9, vertical: 3),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(999),
+      padding: const EdgeInsets.all(1.5),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColorsDark.card : AppColors.card,
+          borderRadius: BorderRadius.circular(20.5),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          gradient: AppGradients.cta,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          outfit.occasion.toUpperCase(),
+                          style: AppTypography.mono.copyWith(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
-                      child: Text(
-                        outfit.occasion.toUpperCase(),
-                        style: AppTypography.mono.copyWith(
-                            fontSize: 10.5,
-                            letterSpacing: 0.4),
-                      ),
-                    ),
                     if (outfit.weather != null) ...[
                       const SizedBox(width: 8),
                       Text(
@@ -71,20 +85,21 @@ class _OutfitCardState extends ConsumerState<OutfitCard> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.orange,
+                          color: AppColors.goldSoft,
                           borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.star, size: 11, color: Colors.white),
+                            const Text('🔥', style: TextStyle(fontSize: 11)),
                             const SizedBox(width: 4),
                             Text(
                               '${outfit.ruleScore.round()}',
-                              style: GoogleFonts.jetBrainsMono(
+                              style: GoogleFonts.spaceMono(
                                 fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.orange,
                               ),
                             ),
                           ],

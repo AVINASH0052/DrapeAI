@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../providers/today_provider.dart';
 import '../providers/weather_provider.dart';
 import '../widgets/outfit_card.dart';
@@ -25,22 +25,23 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     ('casual', 'Casual'),
     ('work', 'Work'),
     ('party', 'Party'),
-    ('festive', 'Festive'),
-    ('date', 'Date Night'),
+    ('festive', 'Festive ✨'),
+    ('date', 'Date'),
   ];
 
   Future<void> _generate(String occasion) async {
     setState(() => _generating = true);
     try {
       final api = ref.read(apiClientProvider);
-      await api.generateOutfits(occasion);
+      await api.generateOutfits(occasion.replaceAll(' ✨', ''));
       ref.invalidate(todayOutfitsProvider);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Generation failed: $e'),
-              backgroundColor: AppColors.red),
+            content: Text('AI had a moment — try again: $e'),
+            backgroundColor: AppColors.red,
+          ),
         );
       }
     } finally {
@@ -54,120 +55,98 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     final occasion = ref.watch(selectedOccasionProvider);
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Today',
-                            style: GoogleFonts.instrumentSerif(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.ink,
-                            )),
-                        const SizedBox(height: 2),
-                        _WeatherLine(),
-                      ],
-                    ),
-                  ),
-                  GestureDetector(
+      extendBody: true,
+      body: DrapeMeshBackground(
+        showOrbs: false,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              DrapeScreenHeader(
+                title: 'Today\'s Fit',
+                subtitle: null,
+                gradientTitle: true,
+                actions: [
+                  DrapeIconButton(
+                    icon: Icons.shuffle_rounded,
                     onTap: () => context.pushNamed('shuffle'),
-                    child: Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(Icons.shuffle, size: 20, color: AppColors.ink),
-                    ),
                   ),
                 ],
               ),
-            ),
-            // Occasion chips
-            SizedBox(
-              height: 52,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                itemCount: _occasions.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, i) {
-                  final (key, label) = _occasions[i];
-                  final isActive = occasion == key;
-                  return GestureDetector(
-                    onTap: () => ref.read(selectedOccasionProvider.notifier).state = key,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      height: 32,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: isActive ? AppColors.ink : const Color(0xFFF1EFEB),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(label,
-                          style: AppTypography.chip.copyWith(
-                              color: isActive ? Colors.white : AppColors.ink2)),
-                    ),
-                  );
-                },
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: _WeatherLine(),
               ),
-            ),
-            // Outfits list
-            Expanded(
-              child: outfitsAsync.when(
-                loading: () => const Center(
-                    child: CircularProgressIndicator(color: AppColors.orange)),
-                error: (e, _) => Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Could not load outfits', style: AppTypography.body),
-                      const SizedBox(height: 12),
-                      OutlinedButton(
-                        onPressed: () => ref.invalidate(todayOutfitsProvider),
-                        child: const Text('Try again'),
-                      ),
-                    ],
-                  ),
+              SizedBox(
+                height: 48,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: _occasions.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final (key, label) = _occasions[i];
+                    final isActive = occasion == key;
+                    return DrapeChip(
+                      label: label,
+                      active: isActive,
+                      onTap: () =>
+                          ref.read(selectedOccasionProvider.notifier).state = key,
+                    );
+                  },
                 ),
-                data: (outfits) => outfits.isEmpty
-                    ? _buildEmpty(occasion)
-                    : RefreshIndicator(
-                        onRefresh: () async {
-                          await _generate(occasion);
-                        },
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                          itemCount: outfits.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 16),
-                          itemBuilder: (_, i) =>
-                              TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 0.0, end: 1.0),
-                                duration: Duration(milliseconds: 300 + i * 100),
-                                builder: (_, value, child) => Opacity(
-                                  opacity: value,
-                                  child: Transform.translate(
-                                    offset: Offset(0, 12 * (1 - value)),
-                                    child: child,
-                                  ),
-                                ),
-                                child: OutfitCard(outfit: outfits[i]),
-                              ),
-                        ),
-                      ),
               ),
-            ),
-          ],
+              Expanded(
+                child: outfitsAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: AppColors.orange),
+                  ),
+                  error: (e, _) => Center(
+                    child: DrapeGlassCard(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🌧️', style: TextStyle(fontSize: 32)),
+                          const SizedBox(height: 12),
+                          Text('fits didn\'t load', style: AppTypography.title),
+                          const SizedBox(height: 12),
+                          DrapeGradientButton(
+                            label: 'Retry',
+                            onPressed: () => ref.invalidate(todayOutfitsProvider),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  data: (outfits) => outfits.isEmpty
+                      ? _buildEmpty(occasion)
+                      : RefreshIndicator(
+                          color: AppColors.orange,
+                          onRefresh: () async => _generate(occasion),
+                          child: ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                            itemCount: outfits.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 16),
+                            itemBuilder: (_, i) => TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.0, end: 1.0),
+                              duration: Duration(milliseconds: 300 + i * 100),
+                              builder: (_, value, child) => Opacity(
+                                opacity: value,
+                                child: Transform.translate(
+                                  offset: Offset(0, 16 * (1 - value)),
+                                  child: child,
+                                ),
+                              ),
+                              child: OutfitCard(outfit: outfits[i]),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -177,40 +156,34 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                border: Border.all(color: AppColors.border),
-                borderRadius: BorderRadius.circular(14),
+        child: DrapeGlassCard(
+          gradientBorder: true,
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('✨', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 12),
+              Text(
+                'no $occasion fits yet',
+                style: AppTypography.headingSerif.copyWith(fontSize: 24),
+                textAlign: TextAlign.center,
               ),
-              child: Column(
-                children: [
-                  Text(
-                    'Nothing yet for $occasion.',
-                    style: AppTypography.body.copyWith(color: AppColors.ink3),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: 200,
-                    child: ElevatedButton(
-                      onPressed: _generating ? null : () => _generate(occasion),
-                      child: _generating
-                          ? const SizedBox(
-                              height: 18, width: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Text('Generate outfits'),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 8),
+              Text(
+                'hit generate — AI picks from your closet in seconds',
+                textAlign: TextAlign.center,
+                style: AppTypography.body,
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              DrapeGradientButton(
+                label: 'Generate fits',
+                icon: Icons.auto_awesome_rounded,
+                loading: _generating,
+                onPressed: _generating ? null : () => _generate(occasion),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -223,22 +196,32 @@ class _WeatherLine extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final weatherAsync = ref.watch(weatherProvider);
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return weatherAsync.when(
       loading: () => Shimmer.fromColors(
-        baseColor: AppColors.border,
-        highlightColor: AppColors.bgWarm,
+        baseColor: isDark ? AppColorsDark.border : AppColors.border,
+        highlightColor: isDark ? AppColorsDark.card : AppColors.bgWarm,
         child: Container(
-          width: 140, height: 12,
+          width: 160,
+          height: 14,
           decoration: BoxDecoration(
             color: AppColors.card,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
         ),
       ),
-      error: (_, __) => Text('Weather unavailable',
-          style: AppTypography.caption),
-      data: (weather) => Text(weather.display,
-          style: AppTypography.caption),
+      error: (_, __) => Text(
+        '🌤 weather unavailable',
+        style: AppTypography.caption,
+      ),
+      data: (weather) => Text(
+        '🌡 ${weather.display}',
+        style: AppTypography.caption.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppColors.orange,
+        ),
+      ),
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../providers/auth_provider.dart';
 
 enum _AuthView { login, phone, otp }
@@ -115,7 +116,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         backgroundColor: AppColors.red,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
@@ -123,14 +124,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          child: switch (_view) {
-            _AuthView.login => _buildLogin(),
-            _AuthView.phone => _buildPhone(),
-            _AuthView.otp => _buildOtp(),
-          },
+      body: DrapeMeshBackground(
+        child: SafeArea(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            child: switch (_view) {
+              _AuthView.login => _buildLogin(),
+              _AuthView.phone => _buildPhone(),
+              _AuthView.otp => _buildOtp(),
+            },
+          ),
         ),
       ),
     );
@@ -143,19 +148,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 60),
-          _Wordmark(),
+          const SizedBox(height: 32),
+          const DrapeWordmark(size: 40),
           const Spacer(),
           Text(
-            'Welcome to drape.',
-            style: AppTypography.displaySerif.copyWith(fontSize: 38),
+            'your closet.\nour AI.\nmain character fits.',
+            style: AppTypography.heroGradient(context).copyWith(
+              fontSize: 36,
+              height: 1.05,
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 14),
           Text(
-            'AI styling, made for your wardrobe — wherever you are.',
-            style: AppTypography.body,
+            'Saree × streetwear × boardroom. Styled for Mumbai, London, Dubai — wherever you drip.',
+            style: AppTypography.body.copyWith(fontSize: 15),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 32),
           OutlinedButton(
             onPressed: _loading ? null : _googleSignIn,
             child: Row(
@@ -163,70 +171,63 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               children: [
                 const _GoogleLogo(),
                 const SizedBox(width: 10),
-                Text('Continue with Google',
-                    style: AppTypography.button.copyWith(color: AppColors.ink)),
+                Text(
+                  'Continue with Google',
+                  style: AppTypography.button
+                      .copyWith(color: AppColors.textPrimary(context)),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          ElevatedButton(
+          const SizedBox(height: 12),
+          DrapeGradientButton(
+            label: 'Continue with Phone',
+            icon: Icons.phone_rounded,
+            loading: _loading,
             onPressed: _loading
                 ? null
                 : () => setState(() => _view = _AuthView.phone),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.phone_outlined, size: 18),
-                const SizedBox(width: 10),
-                Text('Continue with Phone',
-                    style: AppTypography.button
-                        .copyWith(color: Colors.white)),
-              ],
-            ),
           ),
-          const SizedBox(height: 10),
-          if (Platform.isIOS)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _appleSignIn,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
+          if (Platform.isIOS) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: _loading ? null : _appleSignIn,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.ink,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.apple, size: 22, color: Colors.white),
-                      const SizedBox(width: 10),
-                      Text('Continue with Apple',
-                          style: AppTypography.button
-                              .copyWith(color: Colors.white)),
-                    ],
-                  ),
+                  elevation: 0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.apple, size: 22),
+                    const SizedBox(width: 10),
+                    Text('Continue with Apple', style: AppTypography.button),
+                  ],
                 ),
               ),
             ),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
+          ],
+          const SizedBox(height: 8),
+          Center(
             child: TextButton(
-              onPressed: () {
-                ref.read(authStatusProvider.notifier).devBypass();
-              },
-              child: Text('Skip for now (dev)',
-                  style: AppTypography.button
-                      .copyWith(color: AppColors.ink3)),
+              onPressed: () =>
+                  ref.read(authStatusProvider.notifier).devBypass(),
+              child: Text(
+                'skip for now (dev)',
+                style: AppTypography.caption.copyWith(
+                  decoration: TextDecoration.underline,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Center(
             child: Text.rich(
               TextSpan(
@@ -235,53 +236,56 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   const TextSpan(text: 'By continuing you agree to our '),
                   TextSpan(
                     text: 'Terms',
-                    style: const TextStyle(
-                        decoration: TextDecoration.underline),
+                    style: TextStyle(
+                      color: AppColors.orange,
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
-                  const TextSpan(text: ' and '),
+                  const TextSpan(text: ' & '),
                   TextSpan(
-                    text: 'Privacy Policy',
-                    style: const TextStyle(
-                        decoration: TextDecoration.underline),
+                    text: 'Privacy',
+                    style: TextStyle(
+                      color: AppColors.orange,
+                      decoration: TextDecoration.underline,
+                    ),
                   ),
-                  const TextSpan(text: '.'),
                 ],
               ),
               textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 36),
         ],
       ),
     );
   }
 
   Widget _buildPhone() {
-    final ready = _phoneController.text.replaceAll(RegExp(r'\D'), '').length >= 8;
+    final ready =
+        _phoneController.text.replaceAll(RegExp(r'\D'), '').length >= 8;
     return Padding(
       key: const ValueKey('phone'),
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 4),
           _BackButton(onTap: () => setState(() => _view = _AuthView.login)),
-          const SizedBox(height: 24),
-          Text('Enter your phone',
-              style: AppTypography.headingSerif.copyWith(fontSize: 26)),
-          const SizedBox(height: 6),
-          Text("We'll text you a 6-digit code to verify.",
+          const SizedBox(height: 28),
+          Text('drop your digits 📱',
+              style: AppTypography.headingSerif.copyWith(fontSize: 30)),
+          const SizedBox(height: 8),
+          Text("we'll ping a 6-digit code. no spam, promise.",
               style: AppTypography.body),
           const SizedBox(height: 28),
           Row(
             children: [
               Container(
-                height: 50,
+                height: 54,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: AppColors.surface(context),
                   border: Border.all(color: AppColors.borderStrong),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
@@ -292,10 +296,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       DropdownMenuItem(value: '+44', child: Text('🇬🇧 +44')),
                       DropdownMenuItem(value: '+971', child: Text('🇦🇪 +971')),
                       DropdownMenuItem(value: '+65', child: Text('🇸🇬 +65')),
+                      DropdownMenuItem(value: '+61', child: Text('🇦🇺 +61')),
+                      DropdownMenuItem(value: '+81', child: Text('🇯🇵 +81')),
                     ],
                     onChanged: (v) => setState(() => _countryCode = v!),
-                    style: AppTypography.label.copyWith(
-                        color: AppColors.ink, fontWeight: FontWeight.w500),
+                    style: AppTypography.label
+                        .copyWith(color: AppColors.textPrimary(context)),
                   ),
                 ),
               ),
@@ -305,26 +311,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    hintText: '98765 43210',
-                  ),
+                  decoration: const InputDecoration(hintText: '98765 43210'),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          ElevatedButton(
+          const SizedBox(height: 20),
+          DrapeGradientButton(
+            label: 'Send code',
+            loading: _loading,
             onPressed: _loading || !ready ? null : _sendOtp,
-            child: _loading
-                ? const _Spinner()
-                : const Text('Send code'),
           ),
           const Spacer(),
           Center(
-            child: Text("We never share your number.",
+            child: Text('🔒 we never share your number',
                 style: AppTypography.caption),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -338,27 +341,26 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 4),
           _BackButton(
-              onTap: () => setState(() {
-                    _view = _AuthView.phone;
-                    for (final c in _otpControllers) c.clear();
-                  })),
-          const SizedBox(height: 24),
-          Text('Verify your number',
-              style: AppTypography.headingSerif.copyWith(fontSize: 26)),
-          const SizedBox(height: 6),
+            onTap: () => setState(() {
+              _view = _AuthView.phone;
+              for (final c in _otpControllers) c.clear();
+            }),
+          ),
+          const SizedBox(height: 28),
+          Text('verify ✓',
+              style: AppTypography.headingSerif.copyWith(fontSize: 30)),
+          const SizedBox(height: 8),
           Text.rich(
             TextSpan(
               style: AppTypography.body,
               children: [
-                const TextSpan(text: 'We sent a code to '),
+                const TextSpan(text: 'code sent to '),
                 TextSpan(
                   text: _fullPhone,
-                  style: TextStyle(
-                      color: AppColors.ink, fontWeight: FontWeight.w500),
+                  style: AppTypography.label
+                      .copyWith(color: AppColors.orange),
                 ),
-                const TextSpan(text: '.'),
               ],
             ),
           ),
@@ -384,67 +386,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               );
             }),
           ),
-          const SizedBox(height: 20),
-          ElevatedButton(
+          const SizedBox(height: 24),
+          DrapeGradientButton(
+            label: 'Verify & vibe',
+            loading: _loading,
             onPressed: _loading || !filled ? null : _verifyOtp,
-            child: _loading ? const _Spinner() : const Text('Verify'),
           ),
           const SizedBox(height: 16),
           Center(
             child: _resendTimer > 0
                 ? Text(
-                    'Resend code in 0:${_resendTimer.toString().padLeft(2, '0')}',
+                    'resend in 0:${_resendTimer.toString().padLeft(2, '0')}',
                     style: AppTypography.mono,
                   )
                 : GestureDetector(
                     onTap: _sendOtp,
                     child: Text(
                       'Resend code',
-                      style: AppTypography.label
-                          .copyWith(color: AppColors.orange),
+                      style: AppTypography.label.copyWith(color: AppColors.orange),
                     ),
                   ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _Wordmark extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Text(
-          'drape',
-          style: GoogleFonts.instrumentSerif(
-            fontSize: 36,
-            fontWeight: FontWeight.w400,
-            color: AppColors.ink,
-            letterSpacing: -0.5,
-          ),
-        ),
-        Text(
-          '.',
-          style: GoogleFonts.instrumentSerif(
-            fontSize: 36,
-            fontWeight: FontWeight.w400,
-            color: AppColors.orange,
-          ),
-        ),
-        Text(
-          'ai',
-          style: GoogleFonts.inter(
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
-            color: AppColors.ink,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -455,18 +419,7 @@ class _BackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: AppColors.border),
-        ),
-        child: const Icon(Icons.arrow_back, size: 20, color: AppColors.ink),
-      ),
-    );
+    return DrapeIconButton(icon: Icons.arrow_back_rounded, onTap: onTap);
   }
 }
 
@@ -506,22 +459,24 @@ class _OtpCellState extends State<_OtpCell> {
 
   @override
   Widget build(BuildContext context) {
-    final hasValue = widget.controller.text.isNotEmpty;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      width: 50,
-      height: 56,
+      width: 48,
+      height: 58,
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: AppColors.surface(context),
         border: Border.all(
-          color: _focused
-              ? AppColors.orange
-              : AppColors.borderStrong,
-          width: _focused ? 1.5 : 1,
+          color: _focused ? AppColors.orange : AppColors.borderStrong,
+          width: _focused ? 2 : 1,
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: _focused
-            ? [BoxShadow(color: AppColors.orangeSoft, blurRadius: 6)]
+            ? [
+                BoxShadow(
+                  color: AppColors.orange.withValues(alpha: 0.25),
+                  blurRadius: 12,
+                ),
+              ]
             : null,
       ),
       child: Center(
@@ -531,10 +486,10 @@ class _OtpCellState extends State<_OtpCell> {
           textAlign: TextAlign.center,
           maxLength: 1,
           keyboardType: TextInputType.number,
-          style: GoogleFonts.jetBrainsMono(
+          style: GoogleFonts.spaceMono(
             fontSize: 22,
-            fontWeight: FontWeight.w500,
-            color: AppColors.ink,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary(context),
           ),
           onChanged: (v) {
             if (v.isNotEmpty) {
@@ -553,19 +508,6 @@ class _OtpCellState extends State<_OtpCell> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _Spinner extends StatelessWidget {
-  const _Spinner();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      height: 20,
-      width: 20,
-      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
     );
   }
 }

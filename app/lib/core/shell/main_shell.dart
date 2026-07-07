@@ -1,8 +1,11 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_gradients.dart';
 
 class MainShell extends StatelessWidget {
   final Widget child;
@@ -20,87 +23,84 @@ class MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentIndex = _currentIndex(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      extendBody: true,
       body: child,
-      bottomNavigationBar: _BottomNav(
-        currentIndex: currentIndex,
-        onTap: (i) {
-          switch (i) {
-            case 0:
-              context.go('/wardrobe');
-            case 1:
-              context.go('/today');
-            case 2:
-              context.go('/lookbooks');
-            case 3:
-              context.go('/profile');
-          }
-        },
-      ),
-    );
-  }
-}
-
-class _BottomNav extends StatelessWidget {
-  final int currentIndex;
-  final ValueChanged<int> onTap;
-
-  const _BottomNav({required this.currentIndex, required this.onTap});
-
-  static const _items = [
-    (Icons.checkroom_outlined, Icons.checkroom, 'Wardrobe'),
-    (Icons.auto_awesome_outlined, Icons.auto_awesome, 'Outfits'),
-    (Icons.collections_bookmark_outlined, Icons.collections_bookmark, 'Lookbooks'),
-    (Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.bg.withValues(alpha: 0.92),
-        border: const Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ColorFilter.mode(
-            AppColors.bg.withValues(alpha: 0.1),
-            BlendMode.srcOver,
-          ),
-          child: SafeArea(
-            top: false,
-            child: SizedBox(
-              height: 60,
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              height: 68,
+              decoration: BoxDecoration(
+                color: (isDark ? AppColorsDark.card : AppColors.card)
+                    .withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: isDark ? AppColorsDark.border : AppColors.border,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.orange.withValues(alpha: 0.12),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
               child: Row(
                 children: List.generate(_items.length, (i) {
-                  final (icon, activeIcon, label) = _items[i];
+                  final (icon, activeIcon, label, emoji) = _items[i];
                   final isActive = i == currentIndex;
                   return Expanded(
                     child: GestureDetector(
-                      onTap: () => onTap(i),
+                      onTap: () => _navigate(context, i),
                       behavior: HitTestBehavior.opaque,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            isActive ? activeIcon : icon,
-                            size: 22,
-                            color: isActive
-                                ? AppColors.orange
-                                : AppColors.ink3,
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            label,
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: isActive
-                                  ? AppColors.orange
-                                  : AppColors.ink3,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 6),
+                        decoration: isActive
+                            ? BoxDecoration(
+                                gradient: AppGradients.cta,
+                                borderRadius: BorderRadius.circular(22),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.orange
+                                        .withValues(alpha: 0.35),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              )
+                            : null,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              emoji,
+                              style: TextStyle(
+                                fontSize: isActive ? 18 : 16,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              label,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight:
+                                    isActive ? FontWeight.w800 : FontWeight.w600,
+                                color: isActive
+                                    ? Colors.white
+                                    : AppColors.textMuted(context),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -112,4 +112,24 @@ class _BottomNav extends StatelessWidget {
       ),
     );
   }
+
+  void _navigate(BuildContext context, int i) {
+    switch (i) {
+      case 0:
+        context.go('/wardrobe');
+      case 1:
+        context.go('/today');
+      case 2:
+        context.go('/lookbooks');
+      case 3:
+        context.go('/profile');
+    }
+  }
+
+  static const _items = [
+    (Icons.checkroom_outlined, Icons.checkroom, 'Closet', '👗'),
+    (Icons.auto_awesome_outlined, Icons.auto_awesome, 'Fit', '✨'),
+    (Icons.collections_bookmark_outlined, Icons.collections_bookmark, 'Mood', '📌'),
+    (Icons.person_outline_rounded, Icons.person_rounded, 'You', '🫶'),
+  ];
 }

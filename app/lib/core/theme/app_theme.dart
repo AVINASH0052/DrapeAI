@@ -1,57 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'app_colors.dart';
+import 'app_gradients.dart';
 
 class AppTheme {
   AppTheme._();
+
+  static const _radius = 16.0;
 
   static ThemeData get light => ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
         colorScheme: const ColorScheme.light(
-          primary: AppColors.ink,
-          secondary: AppColors.orange,
+          primary: AppColors.orange,
+          secondary: AppColors.pink,
+          tertiary: AppColors.lavender,
           surface: AppColors.bg,
           error: AppColors.red,
+          onPrimary: Colors.white,
+          onSurface: AppColors.ink,
         ),
         scaffoldBackgroundColor: AppColors.bg,
-        textTheme: GoogleFonts.interTextTheme(),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.bg,
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(),
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.transparent,
           foregroundColor: AppColors.ink,
           elevation: 0,
           scrolledUnderElevation: 0,
           centerTitle: false,
           surfaceTintColor: Colors.transparent,
+          titleTextStyle: GoogleFonts.syne(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.ink,
             foregroundColor: Colors.white,
             disabledBackgroundColor: AppColors.ink4,
-            minimumSize: const Size(double.infinity, 50),
+            minimumSize: const Size(double.infinity, 54),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(_radius),
             ),
             elevation: 0,
-            textStyle: GoogleFonts.inter(
+            textStyle: GoogleFonts.plusJakartaSans(
               fontSize: 15,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.15,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.ink,
-            minimumSize: const Size(double.infinity, 50),
-            side: const BorderSide(color: AppColors.borderStrong, width: 1),
+            minimumSize: const Size(double.infinity, 54),
+            side: const BorderSide(color: AppColors.borderStrong, width: 1.5),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(_radius),
             ),
-            textStyle: GoogleFonts.inter(
+            textStyle: GoogleFonts.plusJakartaSans(
               fontSize: 15,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -59,44 +70,52 @@ class AppTheme {
           filled: true,
           fillColor: AppColors.card,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(_radius),
             borderSide: const BorderSide(color: AppColors.borderStrong),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(_radius),
             borderSide: const BorderSide(color: AppColors.borderStrong),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.ink, width: 1.5),
+            borderRadius: BorderRadius.circular(_radius),
+            borderSide: const BorderSide(color: AppColors.orange, width: 2),
           ),
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          hintStyle: GoogleFonts.inter(color: AppColors.ink3, fontSize: 15),
+              const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          hintStyle: GoogleFonts.plusJakartaSans(
+            color: AppColors.ink3,
+            fontSize: 15,
+          ),
         ),
         chipTheme: ChipThemeData(
           selectedColor: AppColors.ink,
-          backgroundColor: const Color(0xFFF1EFEB),
-          disabledColor: AppColors.gray100,
-          labelStyle:
-              GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
-          secondaryLabelStyle: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Colors.white),
+          backgroundColor: AppColors.gray100,
+          labelStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          secondaryLabelStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
           shape: const StadiumBorder(side: BorderSide.none),
-          padding: const EdgeInsets.symmetric(horizontal: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           showCheckmark: false,
         ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: AppColors.ink,
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
+          backgroundColor: AppColors.orange,
           foregroundColor: Colors.white,
-          elevation: 8,
-          shape: CircleBorder(),
+          elevation: 12,
+          highlightElevation: 16,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
         progressIndicatorTheme: const ProgressIndicatorThemeData(
           color: AppColors.orange,
-          linearTrackColor: Color(0xFFECEAE4),
+          linearTrackColor: AppColors.orangeSoft,
         ),
         dividerTheme: const DividerThemeData(
           color: AppColors.border,
@@ -104,9 +123,23 @@ class AppTheme {
           space: 1,
         ),
         bottomSheetTheme: const BottomSheetThemeData(
-          backgroundColor: AppColors.bg,
+          backgroundColor: AppColors.card,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+        ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        cardTheme: CardTheme(
+          color: AppColors.card,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: AppColors.border),
           ),
         ),
       );
@@ -115,49 +148,56 @@ class AppTheme {
         useMaterial3: true,
         brightness: Brightness.dark,
         colorScheme: const ColorScheme.dark(
-          primary: AppColorsDark.ink,
-          secondary: AppColorsDark.orange,
+          primary: AppColorsDark.orange,
+          secondary: AppColors.pink,
+          tertiary: AppColors.lavender,
           surface: AppColorsDark.bg,
           error: AppColorsDark.red,
+          onPrimary: Colors.white,
+          onSurface: AppColorsDark.ink,
         ),
         scaffoldBackgroundColor: AppColorsDark.bg,
-        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: AppColorsDark.bg,
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme),
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.transparent,
           foregroundColor: AppColorsDark.ink,
           elevation: 0,
           scrolledUnderElevation: 0,
           centerTitle: false,
           surfaceTintColor: Colors.transparent,
+          titleTextStyle: GoogleFonts.syne(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: AppColorsDark.ink,
+          ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColorsDark.ink,
             foregroundColor: AppColorsDark.bg,
             disabledBackgroundColor: AppColorsDark.ink4,
-            minimumSize: const Size(double.infinity, 50),
+            minimumSize: const Size(double.infinity, 54),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(_radius),
             ),
             elevation: 0,
-            textStyle: GoogleFonts.inter(
+            textStyle: GoogleFonts.plusJakartaSans(
               fontSize: 15,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.15,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColorsDark.ink,
-            minimumSize: const Size(double.infinity, 50),
-            side: const BorderSide(color: AppColorsDark.borderStrong, width: 1),
+            minimumSize: const Size(double.infinity, 54),
+            side: const BorderSide(color: AppColorsDark.borderStrong, width: 1.5),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(_radius),
             ),
-            textStyle: GoogleFonts.inter(
+            textStyle: GoogleFonts.plusJakartaSans(
               fontSize: 15,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -165,44 +205,51 @@ class AppTheme {
           filled: true,
           fillColor: AppColorsDark.card,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(_radius),
             borderSide: const BorderSide(color: AppColorsDark.borderStrong),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(_radius),
             borderSide: const BorderSide(color: AppColorsDark.borderStrong),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColorsDark.ink, width: 1.5),
+            borderRadius: BorderRadius.circular(_radius),
+            borderSide: const BorderSide(color: AppColorsDark.orange, width: 2),
           ),
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          hintStyle: GoogleFonts.inter(color: AppColorsDark.ink3, fontSize: 15),
+              const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          hintStyle: GoogleFonts.plusJakartaSans(
+            color: AppColorsDark.ink3,
+            fontSize: 15,
+          ),
         ),
         chipTheme: ChipThemeData(
           selectedColor: AppColorsDark.ink,
           backgroundColor: AppColorsDark.gray100,
-          disabledColor: AppColorsDark.gray50,
-          labelStyle:
-              GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
-          secondaryLabelStyle: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColorsDark.bg),
+          labelStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          secondaryLabelStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColorsDark.bg,
+          ),
           shape: const StadiumBorder(side: BorderSide.none),
-          padding: const EdgeInsets.symmetric(horizontal: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           showCheckmark: false,
         ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
           backgroundColor: AppColorsDark.orange,
-          foregroundColor: AppColorsDark.bg,
-          elevation: 8,
-          shape: CircleBorder(),
+          foregroundColor: Colors.white,
+          elevation: 12,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
         progressIndicatorTheme: const ProgressIndicatorThemeData(
           color: AppColorsDark.orange,
-          linearTrackColor: Color(0xFF2A2826),
+          linearTrackColor: AppColorsDark.orangeSoft,
         ),
         dividerTheme: const DividerThemeData(
           color: AppColorsDark.border,
@@ -210,11 +257,31 @@ class AppTheme {
           space: 1,
         ),
         bottomSheetTheme: const BottomSheetThemeData(
-          backgroundColor: AppColorsDark.bg,
+          backgroundColor: AppColorsDark.card,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+        ),
+        cardTheme: CardTheme(
+          color: AppColorsDark.card,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: AppColorsDark.border),
           ),
         ),
       );
-}
 
+  /// Gradient CTA button decoration
+  static BoxDecoration get gradientButton => BoxDecoration(
+        gradient: AppGradients.cta,
+        borderRadius: BorderRadius.circular(_radius),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.orange.withValues(alpha: 0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      );
+}

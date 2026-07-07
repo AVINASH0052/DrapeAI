@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/widgets/drape_ui.dart';
 
 class LookbooksScreen extends ConsumerStatefulWidget {
   const LookbooksScreen({super.key});
@@ -75,45 +76,25 @@ class _LookbooksScreenState extends ConsumerState<LookbooksScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Lookbooks',
-                            style: GoogleFonts.instrumentSerif(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.ink,
-                            )),
-                        const SizedBox(height: 2),
-                        Text('Outfit collections, your way',
-                            style: AppTypography.caption),
-                      ],
-                    ),
-                  ),
-                  GestureDetector(
+      extendBody: true,
+      body: DrapeMeshBackground(
+        showOrbs: false,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              DrapeScreenHeader(
+                title: 'Moodboards',
+                subtitle: 'saved fits, curated vibes',
+                gradientTitle: true,
+                actions: [
+                  DrapeIconButton(
+                    icon: Icons.add_rounded,
                     onTap: _createLookbook,
-                    child: Container(
-                      width: 36, height: 36,
-                      decoration: const BoxDecoration(
-                        color: AppColors.ink,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.add, size: 18,
-                          color: Colors.white),
-                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 10),
+              const SizedBox(height: 4),
             Expanded(
               child: _loading
                   ? const Center(
@@ -142,6 +123,7 @@ class _LookbooksScreenState extends ConsumerState<LookbooksScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
