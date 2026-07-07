@@ -25,6 +25,8 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
   String? _previewUrl;
   bool _loading = false;
   String? _error;
+  String? _method;
+  String? _model;
 
   @override
   void initState() {
@@ -48,6 +50,8 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
       if (mounted) {
         setState(() {
           _previewUrl = data['preview_url'] as String?;
+          _method = data['method'] as String?;
+          _model = data['model'] as String?;
           _loading = false;
         });
       }
@@ -64,6 +68,21 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
         });
       }
     }
+  }
+
+  String _methodLabel(String method, String? model) {
+    if (method == 'composite') return 'Pillow composite preview';
+    if (method.startsWith('ai:')) {
+      final provider = method.split(':').last;
+      final name = switch (provider) {
+        'openai' => 'OpenAI',
+        'gemini' => 'Gemini',
+        'nvidia' => 'NVIDIA',
+        _ => provider,
+      };
+      return model != null ? '$name · $model' : name;
+    }
+    return method;
   }
 
   @override
@@ -110,6 +129,16 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
                         'your wardrobe · your photo',
                         style: AppTypography.caption,
                       ),
+                      if (_method != null && _method != 'cached') ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          _methodLabel(_method!, _model),
+                          style: AppTypography.mono.copyWith(
+                            fontSize: 10,
+                            color: AppColors.orange,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

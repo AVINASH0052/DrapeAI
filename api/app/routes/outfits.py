@@ -138,7 +138,7 @@ async def visualize_outfit_preview(
             return {
                 "preview_url": get_image_url(row["preview_image_key"]),
                 "cached": True,
-                "method": "composite",
+                "method": "cached",
             }
 
         if not row["try_on_photo_key"]:
@@ -168,4 +168,5 @@ async def visualize_outfit_preview(
         "preview_url": get_image_url(viz.preview_key),
         "cached": False,
         "method": viz.method,
+        "model": viz.model,
     }

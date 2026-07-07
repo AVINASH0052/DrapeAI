@@ -30,6 +30,24 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_base_url: str = "https://api.groq.com/openai/v1"
 
+    # Google Gemini (image generation / editing for outfit try-on)
+    gemini_api_key: str = ""
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+
+    # Outfit try-on image generation — provider failover (nvidia | openai | gemini)
+    tryon_provider_primary: str = "nvidia"
+    tryon_model_primary: str = "qwen/qwen-image-edit"
+    tryon_provider_secondary: str = "openai"
+    tryon_model_secondary: str = "gpt-image-1"
+    tryon_provider_tertiary: str = "gemini"
+    tryon_model_tertiary: str = "gemini-2.5-flash-image"
+    tryon_fallback_composite: bool = True
+    tryon_image_size: str = "1024x1536"       # OpenAI: 1024x1024 | 1024x1536 | 1536x1024
+    tryon_image_quality: str = "medium"       # OpenAI: low | medium | high
+
+    # Optional self-hosted NVIDIA Visual GenAI NIM URL (else uses integrate API)
+    nvidia_visual_genai_url: str = ""
+
     # Per-role model selection (override via env).
     # Default: NVIDIA Kimi K2.6 — free, multimodal (image+text), good quality.
     # Nemotron Nano Omni: NVIDIA NIM's multimodal model for clothing tagging.

@@ -38,7 +38,8 @@ _CATEGORY_Y = {
 @dataclass
 class VisualizeResult:
     preview_key: str
-    method: str  # "composite" | "ai"
+    method: str  # "composite" | "ai:nvidia" | "ai:openai" | "ai:gemini"
+    model: str | None = None
 
 
 def _load_rgba(data: bytes) -> Image.Image:
@@ -156,11 +157,28 @@ async def visualize_outfit(
     try_on_photo_key: str,
     items: list[dict],
 ) -> VisualizeResult:
-    """Generate and store outfit preview image."""
+    """Generate outfit preview — AI providers first, Pillow composite fallback."""
+    from app.config import settings
+    from app.services.image_gen_provider import generate_tryon_image
+
     person_bytes = await read_image_bytes(try_on_photo_key)
-    preview_bytes = await build_composite_preview(person_bytes, items)
+
+    ai = await generate_tryon_image(person_bytes, items)
+    if ai:
+        preview_bytes = ai.image_bytes
+        method = f"ai:{ai.provider}"
+        model = ai.model
+    elif settings.tryon_fallback_composite:
+        preview_bytes = await build_composite_preview(person_bytes, items)
+        method = "composite"
+        model = None
+    else:
+        raise RuntimeError(
+            "Outfit visualization failed: no AI provider available and composite fallback disabled"
+        )
+
     preview_key = await upload_outfit_preview(user_id, outfit_id, preview_bytes)
-    return VisualizeResult(preview_key=preview_key, method="composite")
+    return VisualizeResult(preview_key=preview_key, method=method, model=model)
 
 
 async def get_outfit_items_from_db(conn, outfit_id: str, user_id: str) -> list[dict]:
