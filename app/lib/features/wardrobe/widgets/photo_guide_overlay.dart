@@ -1,9 +1,13 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/drape_ui.dart';
 
 class PhotoGuideOverlay extends StatefulWidget {
   final VoidCallback onDismiss;
@@ -32,7 +36,7 @@ class _PhotoGuideOverlayState extends State<PhotoGuideOverlay>
       vsync: this,
       duration: const Duration(milliseconds: 350),
     )..forward();
-    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic);
   }
 
   @override
@@ -53,65 +57,68 @@ class _PhotoGuideOverlayState extends State<PhotoGuideOverlay>
     return FadeTransition(
       opacity: _fade,
       child: Container(
-        color: Colors.black.withValues(alpha: 0.55),
+        color: Colors.black.withValues(alpha: 0.65),
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                 child: Container(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFF1A1525).withValues(alpha: 0.95),
+                        const Color(0xFF0C0A14).withValues(alpha: 0.98),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
+                      color: AppColors.orange.withValues(alpha: 0.4),
+                      width: 1.5,
                     ),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Tips for best results',
-                        style: AppTypography.title.copyWith(
+                        '📸 snap tips',
+                        style: GoogleFonts.syne(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
                           color: Colors.white,
-                          fontWeight: FontWeight.w600,
                         ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'better pics = better AI tags = better fits',
+                        style: AppTypography.caption
+                            .copyWith(color: Colors.white70),
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 20),
-                      _TipCard(
-                        icon: Icons.crop_landscape_rounded,
-                        text: 'Lay flat on a white background',
+                      const _TipCard(
+                        emoji: '🪟',
+                        text: 'Lay flat on a plain light surface',
                       ),
                       const SizedBox(height: 10),
-                      _TipCard(
-                        icon: Icons.checkroom_rounded,
-                        text: 'Hang on a hanger',
+                      const _TipCard(
+                        emoji: '👔',
+                        text: 'Hang on a neutral hanger',
                       ),
                       const SizedBox(height: 10),
-                      _TipCard(
-                        icon: Icons.wb_sunny_outlined,
-                        text: 'Good lighting, no shadows',
+                      const _TipCard(
+                        emoji: '☀️',
+                        text: 'Natural light, no harsh shadows',
                       ),
                       const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _dismiss,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.orange,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text('Got it',
-                              style: AppTypography.button
-                                  .copyWith(color: Colors.white)),
-                        ),
+                      DrapeGradientButton(
+                        label: 'got it, let\'s snap',
+                        onPressed: _dismiss,
                       ),
                     ],
                   ),
@@ -126,38 +133,30 @@ class _PhotoGuideOverlayState extends State<PhotoGuideOverlay>
 }
 
 class _TipCard extends StatelessWidget {
-  final IconData icon;
+  final String emoji;
   final String text;
-  const _TipCard({required this.icon, required this.text});
+  const _TipCard({required this.emoji, required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.10),
-        ),
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.orange.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 18, color: AppColors.orange),
-          ),
+          Text(emoji, style: const TextStyle(fontSize: 22)),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: AppTypography.label
-                  .copyWith(color: Colors.white, fontSize: 13),
+              style: AppTypography.label.copyWith(
+                color: Colors.white,
+                fontSize: 13,
+              ),
             ),
           ),
         ],
