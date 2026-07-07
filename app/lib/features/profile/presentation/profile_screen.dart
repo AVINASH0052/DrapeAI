@@ -1,3 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -13,6 +16,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/constants/environment.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/widgets/drape_ui.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -30,6 +34,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _notificationsOn = false;
   bool _deletingAccount = false;
+  bool _uploadingTryOn = false;
 
   static const _notifPrefKey = 'push_notifications_enabled';
 
@@ -146,6 +151,54 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       try {
         await ref.read(apiClientProvider).unregisterPushToken();
       } catch (_) {}
+    }
+  }
+
+  Future<void> _uploadTryOnPhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _uploadingTryOn = true);
+    try {
+      await ref.read(apiClientProvider).uploadTryOnPhoto(picked.path);
+      ref.invalidate(userProfileProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Full-body photo saved — try "See me in this fit" on any outfit'),
+            backgroundColor: AppColors.lime,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e'), backgroundColor: AppColors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingTryOn = false);
+    }
+  }
+
+  Future<void> _removeTryOnPhoto() async {
+    setState(() => _uploadingTryOn = true);
+    try {
+      await ref.read(apiClientProvider).deleteTryOnPhoto();
+      ref.invalidate(userProfileProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not remove photo: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingTryOn = false);
     }
   }
 
@@ -283,7 +336,80 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
               ),
-              const DrapeSectionLabel('AI insights'),
+              const DrapeSectionLabel('See me in outfits'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: profileAsync.when(
+                  loading: () => const DrapeGlassCard(
+                    child: SizedBox(
+                      height: 100,
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (profile) => DrapeGlassCard(
+                    gradientBorder: true,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your wardrobe stylist — not a shop',
+                          style: AppTypography.title.copyWith(fontSize: 15),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Add a full-body photo once. We\'ll composite outfits from clothes you already own.',
+                          style: AppTypography.caption,
+                        ),
+                        const SizedBox(height: 14),
+                        if (profile.tryOnPhotoUrl != null)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: AspectRatio(
+                              aspectRatio: 3 / 4,
+                              child: CachedNetworkImage(
+                                imageUrl: Environment.resolveUrl(
+                                    profile.tryOnPhotoUrl!),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DrapeGradientButton(
+                                label: profile.tryOnPhotoUrl != null
+                                    ? 'Update photo'
+                                    : 'Add full-body photo',
+                                onPressed:
+                                    _uploadingTryOn ? null : _uploadTryOnPhoto,
+                              ),
+                            ),
+                            if (profile.tryOnPhotoUrl != null) ...[
+                              const SizedBox(width: 10),
+                              DrapeIconButton(
+                                icon: Icons.delete_outline_rounded,
+                                onTap: _uploadingTryOn
+                                    ? () {}
+                                    : _removeTryOnPhoto,
+                              ),
+                            ],
+                          ],
+                        ),
+                        if (_uploadingTryOn)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 12),
+                            child: LinearProgressIndicator(
+                              color: AppColors.orange,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const DrapeSectionLabel('Wardrobe insights'),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: DrapeGlassCard(
@@ -306,9 +432,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('what to buy next?',
+                            Text('What\'s missing?',
                                 style: AppTypography.title.copyWith(fontSize: 16)),
-                            Text('AI gap analysis for your closet',
+                            Text('Gaps in your closet — wardrobe only',
                                 style: AppTypography.caption),
                           ],
                         ),

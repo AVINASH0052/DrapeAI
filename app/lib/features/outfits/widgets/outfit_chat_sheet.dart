@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/constants/environment.dart';
+import '../../wardrobe/models/item_model.dart';
 import '../models/outfit_model.dart';
 
 class OutfitChatSheet extends ConsumerStatefulWidget {
@@ -69,8 +70,14 @@ class _OutfitChatSheetState extends ConsumerState<OutfitChatSheet> {
 
       // Notify parent if items changed
       if (swaps.isNotEmpty && widget.onUpdated != null) {
-        // The parent receives the original outfit shape; image_url updates carry via items list
-        // (We don't reconstruct a new Outfit here to keep this widget decoupled.)
+        final items = (result['items'] as List?)
+                ?.map((j) => Item.fromJson(j as Map<String, dynamic>))
+                .toList() ??
+            widget.outfit.items;
+        widget.onUpdated!(widget.outfit.copyWith(
+          items: items,
+          reason: reason.isNotEmpty ? reason : widget.outfit.reason,
+        ));
       }
     } catch (e) {
       setState(() {

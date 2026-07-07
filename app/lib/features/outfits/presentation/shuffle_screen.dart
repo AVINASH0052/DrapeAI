@@ -10,6 +10,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/constants/environment.dart';
 import '../../../core/widgets/drape_ui.dart';
 import '../models/outfit_model.dart';
+import '../widgets/outfit_visualize_sheet.dart';
 
 class ShuffleScreen extends ConsumerStatefulWidget {
   const ShuffleScreen({super.key});
@@ -428,6 +429,12 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
                         textAlign: TextAlign.center,
                       ),
                     ],
+                    const SizedBox(height: 12),
+                    DrapeGradientButton(
+                      label: 'See me in this fit ✨',
+                      onPressed: () =>
+                          showOutfitVisualizeSheet(context, outfit),
+                    ),
                   ],
                 ),
               ),

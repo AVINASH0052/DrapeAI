@@ -61,11 +61,11 @@ async def send_daily_push(ctx: dict[str, Any]) -> str:
 
     Scheduled via ARQ cron at 7:30 AM IST.
     """
-    from app.services.push_sender import send_daily_outfit_push
+    from app.services.push_sender import send_daily_outfit_pushes_batch
 
     logger.info("[worker] send_daily_push triggered")
     try:
-        count = await send_daily_outfit_push()
+        count = await send_daily_outfit_pushes_batch()
         logger.info(f"[worker] send_daily_push: sent to {count} users")
         return f"sent:{count}"
     except Exception as e:

@@ -27,6 +27,58 @@ class ApiClient {
     await _dio.patch('/me', data: data);
   }
 
+  Future<Map<String, dynamic>> uploadTryOnPhoto(String filePath) async {
+    final formData = FormData.fromMap({
+      'image': await MultipartFile.fromFile(filePath),
+    });
+    final resp = await _dio.post(
+      '/me/try-on-photo',
+      data: formData,
+      options: Options(receiveTimeout: const Duration(minutes: 1)),
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<void> deleteTryOnPhoto() async {
+    await _dio.delete('/me/try-on-photo');
+  }
+
+  // --- Demo wardrobe ---
+  Future<Map<String, dynamic>> getDemoWardrobe() async {
+    final resp = await _dio.get('/demo/wardrobe');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> activateDemoWardrobe() async {
+    final resp = await _dio.post('/demo/activate');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> clearDemoWardrobe() async {
+    final resp = await _dio.delete('/demo/clear');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> uploadItemsBatch(List<String> filePaths) async {
+    final files = <MapEntry<String, MultipartFile>>[];
+    for (var i = 0; i < filePaths.length; i++) {
+      files.add(MapEntry(
+        'images',
+        await MultipartFile.fromFile(filePaths[i]),
+      ));
+    }
+    final formData = FormData();
+    for (final f in files) {
+      formData.files.add(f);
+    }
+    final resp = await _dio.post(
+      '/items/upload/batch',
+      data: formData,
+      options: Options(receiveTimeout: const Duration(minutes: 5)),
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
   // --- Preferences ---
   Future<void> savePreferences(Map<String, dynamic> prefs) async {
     await _dio.put('/me/preferences', data: prefs);
@@ -103,6 +155,16 @@ class ApiClient {
 
   Future<Map<String, dynamic>> getTodayOutfits() async {
     final resp = await _dio.get('/outfits/today');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> visualizeOutfit(String outfitId,
+      {bool force = false}) async {
+    final resp = await _dio.post(
+      '/outfits/$outfitId/visualize',
+      queryParameters: {if (force) 'force': true},
+      options: Options(receiveTimeout: const Duration(minutes: 2)),
+    );
     return resp.data as Map<String, dynamic>;
   }
 
@@ -233,8 +295,16 @@ class ApiClient {
     return resp.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> getCategoryBreakdown() async {
+  Future<List<dynamic>> getCategoryBreakdown() async {
     final resp = await _dio.get('/analytics/category-breakdown');
-    return resp.data as Map<String, dynamic>;
+    return resp.data as List<dynamic>;
+  }
+
+  Future<List<dynamic>> getWearHistory({int days = 30}) async {
+    final resp = await _dio.get(
+      '/analytics/wear-history',
+      queryParameters: {'days': days},
+    );
+    return resp.data as List<dynamic>;
   }
 }

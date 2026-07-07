@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/widgets/drape_ui.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../providers/wardrobe_provider.dart';
@@ -239,11 +240,40 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                 icon: Icons.camera_alt_rounded,
                 onPressed: () => context.pushNamed('camera'),
               ),
+              const SizedBox(height: 10),
+              DrapeGradientButton(
+                label: 'Try demo wardrobe',
+                onPressed: () => _activateDemo(context),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _activateDemo(BuildContext context) async {
+    try {
+      final result = await ref.read(apiClientProvider).activateDemoWardrobe();
+      ref.invalidate(wardrobeProvider);
+      if (!context.mounted) return;
+      final added = result['items_added'] as int? ?? 0;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            added > 0
+                ? 'Demo wardrobe loaded — $added pieces'
+                : 'Demo wardrobe ready',
+          ),
+          backgroundColor: AppColors.lime,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Demo load failed: $e')),
+      );
+    }
   }
 }
 

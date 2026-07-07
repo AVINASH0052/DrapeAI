@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     email           TEXT,
     display_name    TEXT,
     photo_url       TEXT,
+    try_on_photo_key TEXT,                    -- full-body photo for outfit visualization
     onboarding_done BOOLEAN NOT NULL DEFAULT FALSE,
     is_admin        BOOLEAN NOT NULL DEFAULT FALSE,
     is_suspended    BOOLEAN NOT NULL DEFAULT FALSE,
@@ -137,6 +138,7 @@ CREATE TABLE IF NOT EXISTS outfits (
     is_saved        BOOLEAN NOT NULL DEFAULT FALSE,
     is_worn         BOOLEAN NOT NULL DEFAULT FALSE,
     worn_date       DATE,                       -- Calendar: date the outfit was worn/planned
+    preview_image_key TEXT,                   -- generated "see me in this outfit" image
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

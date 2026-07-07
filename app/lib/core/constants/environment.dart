@@ -4,24 +4,26 @@ class Environment {
   Environment._();
 
   static const _override = String.fromEnvironment('API_BASE_URL');
+  static const _prodUrl = String.fromEnvironment(
+    'API_PROD_URL',
+    defaultValue: 'https://api.drapeai.app',
+  );
 
-  // Public ngrok tunnel to the local API (works over cellular / any network).
-  // Restart `ngrok http 8000` and update this URL if it changes.
-  static const _tunnelUrl =
+  /// Dev tunnel — only used when API_BASE_URL and prod are not set.
+  static const _devTunnelUrl =
       'https://ca88-2409-40e3-2013-d1d8-715a-65b8-a699-202e.ngrok-free.app';
+
+  static const _useProd = bool.fromEnvironment('USE_PROD_API', defaultValue: false);
 
   static String get apiBaseUrl {
     if (_override.isNotEmpty) return _override;
-    // Real iOS / Android devices use the public tunnel — works over cellular
-    // and avoids iPhone Personal Hotspot's client-isolation firewall.
+    if (_useProd) return _prodUrl;
     if (Platform.isIOS || Platform.isAndroid) {
-      return _tunnelUrl;
+      return _devTunnelUrl;
     }
     return 'http://localhost:8000';
   }
 
-  /// Resolves a possibly-relative URL (e.g. "/uploads/users/x/items/y.png")
-  /// against the current API base so it can be loaded as a network image.
   static String resolveUrl(String url) {
     if (url.isEmpty) return url;
     if (url.startsWith('http://') || url.startsWith('https://')) return url;

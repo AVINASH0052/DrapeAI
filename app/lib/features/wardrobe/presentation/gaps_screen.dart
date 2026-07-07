@@ -7,6 +7,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 
+import '../../../core/widgets/drape_ui.dart';
+
 class GapsScreen extends ConsumerStatefulWidget {
   const GapsScreen({super.key});
 
@@ -75,7 +77,7 @@ class _GapsScreenState extends ConsumerState<GapsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('What to buy next',
+                        Text('Wardrobe gaps',
                             style: GoogleFonts.instrumentSerif(
                               fontSize: 22,
                               fontWeight: FontWeight.w400,
@@ -83,8 +85,8 @@ class _GapsScreenState extends ConsumerState<GapsScreen> {
                             )),
                         Text(
                             _totalItems > 0
-                                ? 'Analyzing $_totalItems items in your wardrobe'
-                                : 'AI suggestions tailored to your profile',
+                                ? 'What categories are light in your closet'
+                                : 'Suggestions based on your style profile',
                             style: AppTypography.caption),
                       ],
                     ),

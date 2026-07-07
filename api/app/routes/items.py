@@ -33,6 +33,40 @@ async def upload_item(
     return result
 
 
+@router.post("/upload/batch", status_code=201)
+async def upload_items_batch(
+    images: list[UploadFile] = File(...),
+    user: User = Depends(get_current_user),
+):
+    """Upload multiple clothing items in one request (max 10)."""
+    if not images:
+        raise HTTPException(status_code=400, detail="No images provided")
+    if len(images) > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 images per batch")
+
+    from app.services.upload_pipeline import process_upload
+
+    results = []
+    errors = []
+    for i, image in enumerate(images):
+        try:
+            file_bytes = await image.read()
+            validate_image(image.content_type, file_bytes)
+            result = await process_upload(user.id, file_bytes, image.content_type)
+            results.append(result)
+        except HTTPException as e:
+            errors.append({"index": i, "detail": e.detail})
+        except Exception as e:
+            errors.append({"index": i, "detail": str(e)})
+
+    return {
+        "uploaded": len(results),
+        "failed": len(errors),
+        "items": results,
+        "errors": errors,
+    }
+
+
 @router.get("")
 async def list_items(
     category: str | None = Query(None),

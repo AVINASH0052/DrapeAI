@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../../outfits/models/outfit_model.dart';
 import '../../outfits/widgets/outfit_card.dart';
 
@@ -59,56 +60,23 @@ class _LookbookDetailScreenState
         List<Map<String, dynamic>>.from(_lookbook!['outfits'] ?? []);
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-              child: Row(
-                children: [
-                  GestureDetector(
+      extendBody: true,
+      body: DrapeMeshBackground(
+        showOrbs: false,
+        child: SafeArea(
+          child: Column(
+            children: [
+              DrapeScreenHeader(
+                title: name,
+                subtitle: '${outfits.length} outfits · curated',
+                gradientTitle: true,
+                actions: [
+                  DrapeIconButton(
+                    icon: Icons.arrow_back_rounded,
                     onTap: () => context.pop(),
-                    child: Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(Icons.arrow_back, size: 20,
-                          color: AppColors.ink),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(name,
-                            style: GoogleFonts.instrumentSerif(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.ink,
-                            )),
-                        Text('${outfits.length} outfits · curated',
-                            style: AppTypography.caption),
-                      ],
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(Icons.share_outlined, size: 18,
-                          color: AppColors.ink),
-                    ),
                   ),
                 ],
               ),
-            ),
             Expanded(
               child: outfits.isEmpty
                   ? Center(

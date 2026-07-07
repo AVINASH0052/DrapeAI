@@ -8,8 +8,11 @@ import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/constants/environment.dart';
+import '../../../core/widgets/drape_ui.dart';
+import '../../wardrobe/models/item_model.dart';
 import '../models/outfit_model.dart';
 import 'outfit_chat_sheet.dart';
+import 'outfit_visualize_sheet.dart';
 
 class OutfitCard extends ConsumerStatefulWidget {
   final Outfit outfit;
@@ -23,10 +26,25 @@ class _OutfitCardState extends ConsumerState<OutfitCard> {
   bool _liked = false;
   bool _disliked = false;
   bool _saved = false;
+  late Outfit _outfit;
+
+  @override
+  void initState() {
+    super.initState();
+    _outfit = widget.outfit;
+  }
+
+  @override
+  void didUpdateWidget(OutfitCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.outfit.id != widget.outfit.id) {
+      _outfit = widget.outfit;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final outfit = widget.outfit;
+    final outfit = _outfit;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -154,7 +172,12 @@ class _OutfitCardState extends ConsumerState<OutfitCard> {
                 const SizedBox(height: 14),
                 const Divider(),
                 const SizedBox(height: 12),
-                // Action buttons
+                // See me + action buttons
+                DrapeGradientButton(
+                  label: 'See me in this fit ✨',
+                  onPressed: () => showOutfitVisualizeSheet(context, outfit),
+                ),
+                const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -205,7 +228,12 @@ class _OutfitCardState extends ConsumerState<OutfitCard> {
                           context: context,
                           isScrollControlled: true,
                           backgroundColor: Colors.transparent,
-                          builder: (_) => OutfitChatSheet(outfit: outfit),
+                          builder: (_) => OutfitChatSheet(
+                            outfit: outfit,
+                            onUpdated: (updated) {
+                              setState(() => _outfit = updated);
+                            },
+                          ),
                         );
                       },
                     ),

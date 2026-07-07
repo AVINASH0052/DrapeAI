@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/constants/environment.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../providers/wardrobe_provider.dart';
 
 class TagReviewScreen extends ConsumerStatefulWidget {
@@ -56,40 +57,23 @@ class _TagReviewScreenState extends ConsumerState<TagReviewScreen> {
     final confidence = ((_tags['confidence'] ?? 0.92) * 100).round();
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              child: Row(
-                children: [
-                  GestureDetector(
+      extendBody: true,
+      body: DrapeMeshBackground(
+        showOrbs: false,
+        child: SafeArea(
+          child: Column(
+            children: [
+              DrapeScreenHeader(
+                title: 'AI tags',
+                subtitle: 'tweak before saving',
+                gradientTitle: true,
+                actions: [
+                  DrapeIconButton(
+                    icon: Icons.close_rounded,
                     onTap: () => context.pop(),
-                    child: Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Icon(Icons.arrow_back, size: 20,
-                          color: AppColors.ink),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Review Tags',
-                          style: AppTypography.label.copyWith(
-                              fontSize: 16, fontWeight: FontWeight.w600)),
-                      Text('AI tagged this — tap to override.',
-                          style: AppTypography.caption),
-                    ],
                   ),
                 ],
               ),
-            ),
             // Content
             Expanded(
               child: ListView(
@@ -334,6 +318,7 @@ class _TagReviewScreenState extends ConsumerState<TagReviewScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

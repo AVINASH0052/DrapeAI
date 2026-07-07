@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../providers/notifications_provider.dart';
 
 class NotificationsScreen extends ConsumerWidget {
@@ -16,33 +17,36 @@ class NotificationsScreen extends ConsumerWidget {
     final notificationsAsync = ref.watch(notificationsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Notifications',
-          style: GoogleFonts.instrumentSerif(
-            fontSize: 22,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              final api = ref.read(apiClientProvider);
-              await api.markAllNotificationsRead();
-              ref.invalidate(notificationsProvider);
-              ref.invalidate(unreadCountProvider);
-            },
-            child: Text(
-              'Mark all read',
-              style: AppTypography.caption.copyWith(
-                color: AppColors.orange,
-                fontWeight: FontWeight.w600,
+      extendBody: true,
+      body: DrapeMeshBackground(
+        showOrbs: false,
+        child: SafeArea(
+          child: Column(
+            children: [
+              DrapeScreenHeader(
+                title: 'Notifications',
+                subtitle: 'fits, tips & updates',
+                gradientTitle: true,
+                actions: [
+                  TextButton(
+                    onPressed: () async {
+                      final api = ref.read(apiClientProvider);
+                      await api.markAllNotificationsRead();
+                      ref.invalidate(notificationsProvider);
+                      ref.invalidate(unreadCountProvider);
+                    },
+                    child: Text(
+                      'Mark all read',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
-        ],
-      ),
-      body: notificationsAsync.when(
+              Expanded(
+                child: notificationsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text('Failed to load notifications',
@@ -100,6 +104,11 @@ class NotificationsScreen extends ConsumerWidget {
             },
           );
         },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
