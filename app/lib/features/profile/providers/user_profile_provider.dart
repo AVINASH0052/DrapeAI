@@ -21,6 +21,7 @@ class UserProfile {
   final String? email;
   final String? phone;
   final String? photoUrl;
+  final String? tryOnPhotoUrl;
   final DateTime? createdAt;
   final List<String> styleTags;
   final String? city;
@@ -32,6 +33,7 @@ class UserProfile {
     this.email,
     this.phone,
     this.photoUrl,
+    this.tryOnPhotoUrl,
     this.createdAt,
     this.styleTags = const [],
     this.city,
@@ -70,6 +72,7 @@ class UserProfile {
       email: me['email'] as String?,
       phone: me['phone'] as String?,
       photoUrl: me['photo_url'] as String?,
+      tryOnPhotoUrl: me['try_on_photo_url'] as String?,
       createdAt: me['created_at'] != null
           ? DateTime.tryParse(me['created_at'] as String)
           : null,

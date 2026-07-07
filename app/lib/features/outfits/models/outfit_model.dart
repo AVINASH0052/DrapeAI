@@ -7,6 +7,7 @@ class Outfit {
   final double ruleScore;
   final String occasion;
   final Map<String, dynamic>? weather;
+  final String? previewUrl;
 
   Outfit({
     required this.id,
@@ -15,6 +16,7 @@ class Outfit {
     this.ruleScore = 0,
     required this.occasion,
     this.weather,
+    this.previewUrl,
   });
 
   factory Outfit.fromJson(Map<String, dynamic> json) {
@@ -27,6 +29,19 @@ class Outfit {
       ruleScore: (json['rule_score'] ?? 0).toDouble(),
       occasion: json['occasion'] ?? 'casual',
       weather: json['weather'],
+      previewUrl: json['preview_url'] as String?,
+    );
+  }
+
+  Outfit copyWith({String? previewUrl}) {
+    return Outfit(
+      id: id,
+      items: items,
+      reason: reason,
+      ruleScore: ruleScore,
+      occasion: occasion,
+      weather: weather,
+      previewUrl: previewUrl ?? this.previewUrl,
     );
   }
 }

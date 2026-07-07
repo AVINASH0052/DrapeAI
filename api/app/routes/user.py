@@ -1,24 +1,33 @@
 """User profile and preferences routes."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 
 from app.auth.dependencies import get_current_user
 from app.database.pool import get_pool
 from app.database.queries.preferences import upsert_preferences, get_preferences
 from app.models.user import User
 from app.models.preferences import PreferencesInput, PreferencesResponse
+from app.services.storage import get_image_url, upload_try_on_photo, delete_image
+from app.utils.image_validation import validate_image
 
 router = APIRouter(tags=["User"])
 
 
 @router.get("/me")
 async def get_profile(user: User = Depends(get_current_user)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT try_on_photo_key FROM users WHERE id = $1", user.id
+        )
+    try_on_key = row["try_on_photo_key"] if row else None
     return {
         "id": user.id,
         "display_name": user.display_name,
         "email": user.email,
         "phone": user.phone,
         "photo_url": user.photo_url,
+        "try_on_photo_url": get_image_url(try_on_key) if try_on_key else None,
         "onboarding_done": user.onboarding_done,
     }
 
@@ -77,4 +86,43 @@ async def delete_account(user: User = Depends(get_current_user)):
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("DELETE FROM users WHERE id = $1", user.id)
+    return {"deleted": True}
+
+
+@router.post("/me/try-on-photo", status_code=201)
+async def upload_try_on_photo_route(
+    image: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+):
+    """Upload a full-body photo used for 'see me in this outfit' previews."""
+    file_bytes = await image.read()
+    validate_image(image.content_type, file_bytes)
+    key = await upload_try_on_photo(user.id, file_bytes, image.content_type or "image/jpeg")
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE users SET try_on_photo_key = $1 WHERE id = $2",
+            key,
+            user.id,
+        )
+    return {
+        "try_on_photo_url": get_image_url(key),
+        "uploaded": True,
+    }
+
+
+@router.delete("/me/try-on-photo")
+async def delete_try_on_photo(user: User = Depends(get_current_user)):
+    """Remove the user's try-on reference photo."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        key = await conn.fetchval(
+            "SELECT try_on_photo_key FROM users WHERE id = $1", user.id
+        )
+        if key:
+            await delete_image(key)
+        await conn.execute(
+            "UPDATE users SET try_on_photo_key = NULL WHERE id = $1", user.id
+        )
     return {"deleted": True}

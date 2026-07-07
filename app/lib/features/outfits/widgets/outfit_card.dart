@@ -8,8 +8,10 @@ import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/constants/environment.dart';
+import '../../../core/widgets/drape_ui.dart';
 import '../models/outfit_model.dart';
 import 'outfit_chat_sheet.dart';
+import 'outfit_visualize_sheet.dart';
 
 class OutfitCard extends ConsumerStatefulWidget {
   final Outfit outfit;
@@ -154,7 +156,12 @@ class _OutfitCardState extends ConsumerState<OutfitCard> {
                 const SizedBox(height: 14),
                 const Divider(),
                 const SizedBox(height: 12),
-                // Action buttons
+                // See me + action buttons
+                DrapeGradientButton(
+                  label: 'See me in this fit ✨',
+                  onPressed: () => showOutfitVisualizeSheet(context, outfit),
+                ),
+                const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [

@@ -65,6 +65,64 @@ def get_image_url(key: str) -> str:
     return f"/uploads/{key}"
 
 
+async def read_image_bytes(key: str) -> bytes:
+    """Read image bytes from local storage or R2."""
+    if settings.environment == "development":
+        path = LOCAL_UPLOAD_DIR / key
+        if not path.exists():
+            raise FileNotFoundError(f"Image not found: {key}")
+        return path.read_bytes()
+
+    client = _get_r2_client()
+    resp = client.get_object(Bucket=settings.r2_bucket_name, Key=key)
+    return resp["Body"].read()
+
+
+async def upload_try_on_photo(
+    user_id: str, image_bytes: bytes, content_type: str = "image/jpeg"
+) -> str:
+    """Upload user's full-body try-on reference photo."""
+    ext = "jpg" if "jpeg" in content_type else "png"
+    key = f"users/{user_id}/try_on/photo.{ext}"
+
+    if settings.environment == "development":
+        path = LOCAL_UPLOAD_DIR / key
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(image_bytes)
+        return key
+
+    client = _get_r2_client()
+    client.put_object(
+        Bucket=settings.r2_bucket_name,
+        Key=key,
+        Body=image_bytes,
+        ContentType=content_type,
+    )
+    return key
+
+
+async def upload_outfit_preview(
+    user_id: str, outfit_id: str, image_bytes: bytes
+) -> str:
+    """Upload generated outfit visualization preview."""
+    key = f"users/{user_id}/outfits/{outfit_id}/preview.png"
+
+    if settings.environment == "development":
+        path = LOCAL_UPLOAD_DIR / key
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(image_bytes)
+        return key
+
+    client = _get_r2_client()
+    client.put_object(
+        Bucket=settings.r2_bucket_name,
+        Key=key,
+        Body=image_bytes,
+        ContentType="image/png",
+    )
+    return key
+
+
 async def delete_image(key: str) -> None:
     """Delete image from storage."""
     if settings.environment == "development":

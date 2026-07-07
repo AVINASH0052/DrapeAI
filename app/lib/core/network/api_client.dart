@@ -27,6 +27,22 @@ class ApiClient {
     await _dio.patch('/me', data: data);
   }
 
+  Future<Map<String, dynamic>> uploadTryOnPhoto(String filePath) async {
+    final formData = FormData.fromMap({
+      'image': await MultipartFile.fromFile(filePath),
+    });
+    final resp = await _dio.post(
+      '/me/try-on-photo',
+      data: formData,
+      options: Options(receiveTimeout: const Duration(minutes: 1)),
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<void> deleteTryOnPhoto() async {
+    await _dio.delete('/me/try-on-photo');
+  }
+
   // --- Preferences ---
   Future<void> savePreferences(Map<String, dynamic> prefs) async {
     await _dio.put('/me/preferences', data: prefs);
@@ -103,6 +119,16 @@ class ApiClient {
 
   Future<Map<String, dynamic>> getTodayOutfits() async {
     final resp = await _dio.get('/outfits/today');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> visualizeOutfit(String outfitId,
+      {bool force = false}) async {
+    final resp = await _dio.post(
+      '/outfits/$outfitId/visualize',
+      queryParameters: {if (force) 'force': true},
+      options: Options(receiveTimeout: const Duration(minutes: 2)),
+    );
     return resp.data as Map<String, dynamic>;
   }
 
