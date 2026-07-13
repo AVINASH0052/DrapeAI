@@ -1,5 +1,6 @@
 """Lookbook CRUD routes."""
 
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -31,7 +32,13 @@ class RenameLookbookRequest(BaseModel):
 async def create(req: CreateLookbookRequest, user: User = Depends(get_current_user)):
     pool = await get_pool()
     async with pool.acquire() as conn:
-        lb = await create_lookbook(conn, user.id, req.name)
+        try:
+            lb = await create_lookbook(conn, user.id, req.name)
+        except asyncpg.UniqueViolationError:
+            raise HTTPException(
+                status_code=409,
+                detail=f"You already have a lookbook named '{req.name}'",
+            )
     return lb
 
 
@@ -61,7 +68,13 @@ async def rename(
 ):
     pool = await get_pool()
     async with pool.acquire() as conn:
-        lb = await rename_lookbook(conn, lookbook_id, user.id, req.name)
+        try:
+            lb = await rename_lookbook(conn, lookbook_id, user.id, req.name)
+        except asyncpg.UniqueViolationError:
+            raise HTTPException(
+                status_code=409,
+                detail=f"You already have a lookbook named '{req.name}'",
+            )
     if not lb:
         raise HTTPException(status_code=404, detail="Lookbook not found")
     return lb

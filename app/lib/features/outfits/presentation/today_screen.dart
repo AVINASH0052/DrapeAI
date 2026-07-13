@@ -10,6 +10,7 @@ import '../../../core/widgets/drape_ui.dart';
 import '../providers/today_provider.dart';
 import '../providers/weather_provider.dart';
 import '../widgets/outfit_card.dart';
+import '../widgets/try_on_photo_nudge.dart';
 
 class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
@@ -77,6 +78,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                 child: _WeatherLine(),
               ),
+              const TryOnPhotoNudge(),
               SizedBox(
                 height: 48,
                 child: ListView.separated(

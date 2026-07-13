@@ -4,6 +4,7 @@ Pipeline: filter wardrobe -> build combos -> score each -> return top 20 candida
 No LLM calls. Pure Python logic. Fast (<100ms for 50 items).
 """
 
+import json
 import random
 import logging
 from itertools import product as cartesian_product
@@ -71,6 +72,17 @@ def _temp_to_weather(temp: int) -> str:
     return "cold"
 
 
+def _season_tags(item: dict) -> list:
+    """season_tags is a jsonb column; asyncpg returns it as a JSON string."""
+    value = item.get("season_tags")
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except (ValueError, TypeError):
+            value = None
+    return value if isinstance(value, list) and value else ["all_season"]
+
+
 def filter_wardrobe(
     items: list[dict], occasion: str, weather: dict | None
 ) -> dict[str, list[dict]]:
@@ -90,7 +102,7 @@ def filter_wardrobe(
     for item in items:
         if not (min_f <= item.get("formality", 3) <= max_f):
             continue
-        item_seasons = set(item.get("season_tags", ["all_season"]))
+        item_seasons = set(_season_tags(item))
         if not item_seasons.intersection(allowed_seasons):
             continue
         cat = item["category"]

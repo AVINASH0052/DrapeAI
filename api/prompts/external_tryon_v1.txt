@@ -1,0 +1,5 @@
+Dress the person in image 0 using the outfit shown in image 1.
+Preserve face, hairstyle, body shape, pose.
+Keep the clothing design from image 1 as closely as possible.
+Photorealistic. Do not change identity.
+Do not add text or watermarks.

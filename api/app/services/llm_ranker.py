@@ -10,7 +10,7 @@ import logging
 
 from app.services.ai_provider import Role, chat
 from app.services.personalization import format_feedback_for_prompt
-from app.utils.llm_json import strip_markdown_fence
+from app.utils.llm_json import extract_json
 from app.utils.prompt_loader import load_prompt
 
 logger = logging.getLogger(__name__)
@@ -70,8 +70,10 @@ async def rank_outfits(
 
     for attempt in range(3):
         try:
-            result = await chat(Role.RANK, prompt, max_tokens=500, temp=0.3)
-            content = strip_markdown_fence(result.text)
+            # Reasoning models (Nemotron) spend tokens on <think> before the
+            # JSON — give them headroom, then extract the JSON payload.
+            result = await chat(Role.RANK, prompt, max_tokens=2500, temp=0.3)
+            content = extract_json(result.text)
             picks = json.loads(content)
 
             output = []

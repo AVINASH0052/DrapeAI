@@ -1,9 +1,16 @@
 """Central configuration from environment variables."""
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        protected_namespaces=("settings_",),
+        extra="ignore",
+    )
+
     environment: str = "development"
     debug: bool = False
 
@@ -34,16 +41,36 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
 
-    # Outfit try-on image generation — provider failover (nvidia | openai | gemini)
-    tryon_provider_primary: str = "nvidia"
-    tryon_model_primary: str = "qwen/qwen-image-edit"
-    tryon_provider_secondary: str = "openai"
-    tryon_model_secondary: str = "gpt-image-1"
-    tryon_provider_tertiary: str = "gemini"
-    tryon_model_tertiary: str = "gemini-2.5-flash-image"
+    # Outfit try-on image generation — provider failover
+    # Recommended: cloudflare → nvidia → openai → gemini
+    tryon_provider_primary: str = "cloudflare"
+    tryon_model_primary: str = "@cf/black-forest-labs/flux-2-klein-9b"
+    tryon_provider_secondary: str = "nvidia"
+    tryon_model_secondary: str = "qwen/qwen-image-edit"
+    tryon_provider_tertiary: str = "openai"
+    tryon_model_tertiary: str = "gpt-image-1"
+    tryon_provider_quaternary: str = "gemini"
+    tryon_model_quaternary: str = "gemini-2.5-flash-image"
     tryon_fallback_composite: bool = True
     tryon_image_size: str = "1024x1536"       # OpenAI: 1024x1024 | 1024x1536 | 1536x1024
     tryon_image_quality: str = "medium"       # OpenAI: low | medium | high
+    tryon_prompt_version: str = "wardrobe_v1"
+    tryon_daily_limit_free: int = 5
+    tryon_job_timeout_sec: int = 120
+    tryon_async: bool = True
+    tryon_enabled: bool = True
+    tryon_input_check_enabled: bool = True
+    tryon_cloudflare_width: int = 1024
+    tryon_cloudflare_height: int = 1536
+
+    # RunPod Serverless (IDM-VTON or custom try-on worker)
+    runpod_api_key: str = ""
+    runpod_endpoint_id: str = ""
+    runpod_tryon_timeout_sec: int = 300
+
+    # Cloudflare Workers AI (try-on primary). Account ID often matches R2.
+    cloudflare_account_id: str = ""
+    cloudflare_api_token: str = ""
 
     # Optional self-hosted NVIDIA Visual GenAI NIM URL (else uses integrate API)
     nvidia_visual_genai_url: str = ""
@@ -91,11 +118,6 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "INFO"
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        protected_namespaces = ("settings_",)
 
 
 settings = Settings()

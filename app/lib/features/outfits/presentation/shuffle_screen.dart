@@ -431,7 +431,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
                     ],
                     const SizedBox(height: 12),
                     DrapeGradientButton(
-                      label: 'See me in this fit ✨',
+                      label: 'See me in this',
                       onPressed: () =>
                           showOutfitVisualizeSheet(context, outfit),
                     ),

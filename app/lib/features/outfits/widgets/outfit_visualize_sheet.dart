@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,6 +28,16 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
   String? _error;
   String? _method;
   String? _model;
+  String? _statusMessage;
+  int? _limit;
+  int? _remaining;
+
+  void _captureUsage(Map<String, dynamic> data) {
+    final limit = data['limit'];
+    final remaining = data['remaining'];
+    if (limit is int) _limit = limit;
+    if (remaining is int) _remaining = remaining;
+  }
 
   @override
   void initState() {
@@ -42,44 +53,143 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
     setState(() {
       _loading = true;
       _error = null;
+      _statusMessage = 'Styling you… ~15s';
     });
     try {
-      final data = await ref
-          .read(apiClientProvider)
-          .visualizeOutfit(widget.outfit.id, force: force);
-      if (mounted) {
-        setState(() {
-          _previewUrl = data['preview_url'] as String?;
-          _method = data['method'] as String?;
-          _model = data['model'] as String?;
-          _loading = false;
-        });
+      final api = ref.read(apiClientProvider);
+      final data = await api.visualizeOutfit(widget.outfit.id, force: force);
+      if (!mounted) return;
+      _captureUsage(data);
+
+      final status = data['status'] as String?;
+      final jobId = data['job_id'] as String?;
+      if (jobId != null &&
+          status != null &&
+          status != 'completed' &&
+          status != 'failed') {
+        await _pollJob(api, jobId);
+        return;
       }
+
+      _applyResult(data);
     } catch (e) {
-      final msg = e.toString();
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          if (msg.contains('full-body photo') || msg.contains('400')) {
-            _error = 'add_your_photo';
-          } else {
-            _error = msg;
-          }
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = _mapError(e);
+      });
     }
   }
 
+  Future<void> _pollJob(ApiClient api, String jobId) async {
+    const maxAttempts = 45;
+    for (var i = 0; i < maxAttempts; i++) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = i < 5
+            ? 'Styling you… ~15s'
+            : 'Still generating… hang tight';
+      });
+      try {
+        final data = await api.visualizeOutfitStatus(
+          widget.outfit.id,
+          jobId: jobId,
+        );
+        _captureUsage(data);
+        final status = data['status'] as String? ?? '';
+        if (status == 'completed') {
+          _applyResult(data);
+          return;
+        }
+        if (status == 'failed') {
+          setState(() {
+            _loading = false;
+            _error = (data['error'] as String?) ?? 'Try-on failed. Please retry.';
+          });
+          return;
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = _mapError(e);
+        });
+        return;
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _error = 'Taking longer than expected. Pull to regenerate in a moment.';
+    });
+  }
+
+  void _applyResult(Map<String, dynamic> data) {
+    _captureUsage(data);
+    setState(() {
+      _previewUrl = data['preview_url'] as String?;
+      _method = data['method'] as String?;
+      _model = data['model'] as String?;
+      _loading = false;
+      _statusMessage = null;
+      if (_previewUrl == null) {
+        _error = (data['error'] as String?) ?? 'No preview returned';
+      }
+    });
+  }
+
+  String _mapError(Object e) {
+    if (e is DioException) {
+      final status = e.response?.statusCode;
+      final detail = e.response?.data;
+      if (status == 429) {
+        final d = detail is Map ? detail['detail'] : null;
+        if (d is Map) {
+          if (d['limit'] is int) _limit = d['limit'] as int;
+          if (d['remaining'] is int) _remaining = d['remaining'] as int;
+        }
+        return 'daily_limit';
+      }
+      if (status == 400) {
+        final msg = detail is Map
+            ? (detail['detail']?.toString() ?? '')
+            : detail?.toString() ?? '';
+        if (msg.toLowerCase().contains('full-body')) {
+          return 'add_your_photo';
+        }
+      }
+      if (detail is Map && detail['detail'] != null) {
+        final d = detail['detail'];
+        if (d is Map && d['message'] != null) {
+          return d['message'].toString();
+        }
+        return d.toString();
+      }
+    }
+    final msg = e.toString();
+    if (msg.contains('full-body photo') || msg.contains('400')) {
+      return 'add_your_photo';
+    }
+    if (msg.contains('429') || msg.contains('Daily try-on')) {
+      return 'daily_limit';
+    }
+    return msg;
+  }
+
   String _methodLabel(String method, String? model) {
-    if (method == 'composite') return 'Pillow composite preview';
+    if (method == 'composite') return 'Quick composite preview';
+    if (method == 'cached') return 'Saved preview';
     if (method.startsWith('ai:')) {
       final provider = method.split(':').last;
       final name = switch (provider) {
+        'cloudflare' => 'AI preview',
         'openai' => 'OpenAI',
         'gemini' => 'Gemini',
         'nvidia' => 'NVIDIA',
         _ => provider,
       };
+      if (provider == 'cloudflare') return name;
       return model != null ? '$name · $model' : name;
     }
     return method;
@@ -129,6 +239,18 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
                         'your wardrobe · your photo',
                         style: AppTypography.caption,
                       ),
+                      if (_limit != null && _remaining != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '$_remaining of $_limit try-ons left today',
+                          style: AppTypography.caption.copyWith(
+                            color: _remaining! <= 1
+                                ? AppColors.orange
+                                : null,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                       if (_method != null && _method != 'cached') ...[
                         const SizedBox(height: 4),
                         Text(
@@ -167,13 +289,13 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
 
   Widget _buildBody(BuildContext context) {
     if (_loading && _previewUrl == null) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: AppColors.orange),
-            SizedBox(height: 16),
-            Text('Creating your look…'),
+            const CircularProgressIndicator(color: AppColors.orange),
+            const SizedBox(height: 16),
+            Text(_statusMessage ?? 'Creating your look…'),
           ],
         ),
       );
@@ -187,7 +309,7 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('📸', style: TextStyle(fontSize: 48)),
+              const Icon(Icons.camera_alt_outlined, size: 48, color: AppColors.orange),
               const SizedBox(height: 12),
               Text(
                 'Add a full-body photo first',
@@ -196,7 +318,7 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
               ),
               const SizedBox(height: 8),
               Text(
-                'We use your photo to show outfits from your own wardrobe — not shopping links.',
+                'We use your photo to show AI previews of outfits from your own wardrobe.',
                 style: AppTypography.body,
                 textAlign: TextAlign.center,
               ),
@@ -214,11 +336,48 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
       );
     }
 
+    if (_error == 'daily_limit') {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: DrapeGlassCard(
+          gradientBorder: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Come back tomorrow',
+                style: AppTypography.headingSerif.copyWith(fontSize: 22),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _limit != null
+                    ? 'You\'ve used all $_limit try-ons for today. Cached looks still open instantly.'
+                    : 'You\'ve used today\'s try-on previews. Cached looks still open instantly.',
+                style: AppTypography.body,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_error != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(_error!, style: AppTypography.body, textAlign: TextAlign.center),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_error!, style: AppTypography.body, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              DrapeGradientButton(
+                label: 'Try again',
+                onPressed: () => _generate(force: true),
+              ),
+            ],
+          ),
         ),
       );
     }

@@ -168,6 +168,17 @@ class ApiClient {
     return resp.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> visualizeOutfitStatus(
+    String outfitId, {
+    String? jobId,
+  }) async {
+    final resp = await _dio.get(
+      '/outfits/$outfitId/visualize/status',
+      queryParameters: {if (jobId != null) 'job_id': jobId},
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
   // --- Lookbooks ---
   Future<Map<String, dynamic>> getLookbooks() async {
     final resp = await _dio.get('/lookbooks');

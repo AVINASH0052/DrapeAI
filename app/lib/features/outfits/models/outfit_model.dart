@@ -33,11 +33,11 @@ class Outfit {
     );
   }
 
-  Outfit copyWith({String? previewUrl}) {
+  Outfit copyWith({List<Item>? items, String? reason, String? previewUrl}) {
     return Outfit(
       id: id,
-      items: items,
-      reason: reason,
+      items: items ?? this.items,
+      reason: reason ?? this.reason,
       ruleScore: ruleScore,
       occasion: occasion,
       weather: weather,

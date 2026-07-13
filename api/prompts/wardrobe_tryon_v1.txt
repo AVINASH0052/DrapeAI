@@ -1,0 +1,12 @@
+Dress the person in image 0 using the clothing garments shown in the reference images.
+
+Wardrobe details (from user's closet):
+{outfit_metadata_lines}
+
+Requirements:
+- Preserve face, hairstyle, skin tone, body shape, and pose exactly
+- Replace only the clothing
+- Match garment colors, patterns, and silhouette from reference images
+- Photorealistic full-body fashion photo, natural lighting, neutral background
+- Indian ethnic wear: respect drape and garment structure (saree, kurta, lehenga)
+Do not change identity. Do not add text or watermarks.

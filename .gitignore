@@ -56,3 +56,8 @@ admin/dist/
 
 # Logs
 *.log
+
+# rembg / model caches (downloaded at runtime into mounted api dir)
+api/.u2net/
+api/.cache/
+tmp_tryon_test/

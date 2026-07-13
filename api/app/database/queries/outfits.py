@@ -8,7 +8,8 @@ import asyncpg
 async def save_outfit(conn: asyncpg.Connection, user_id: str, outfit_data: dict) -> dict:
     """Save a generated outfit to the database."""
     outfit_id = str(uuid.uuid4())
-    item_ids = [item["id"] for item in outfit_data["items"]]
+    # asyncpg returns uuid columns as UUID objects — stringify for jsonb
+    item_ids = [str(item["id"]) for item in outfit_data["items"]]
 
     weather = outfit_data.get("weather") or {}
     row = await conn.fetchrow(

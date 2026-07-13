@@ -8,6 +8,7 @@ from app.database.queries.preferences import upsert_preferences, get_preferences
 from app.models.user import User
 from app.models.preferences import PreferencesInput, PreferencesResponse
 from app.services.storage import get_image_url, upload_try_on_photo, delete_image
+from app.services.tryon_input_check import check_person_photo
 from app.utils.image_validation import validate_image
 
 router = APIRouter(tags=["User"])
@@ -97,6 +98,11 @@ async def upload_try_on_photo_route(
     """Upload a full-body photo used for 'see me in this outfit' previews."""
     file_bytes = await image.read()
     validate_image(image.content_type, file_bytes)
+
+    check = await check_person_photo(file_bytes)
+    if not check.ok:
+        raise HTTPException(status_code=400, detail=check.reason)
+
     key = await upload_try_on_photo(user.id, file_bytes, image.content_type or "image/jpeg")
 
     pool = await get_pool()

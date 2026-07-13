@@ -26,7 +26,7 @@ async def test_get_weather(client):
     resp = await client.get("/weather?city=delhi")
     assert resp.status_code == 200
     data = resp.json()
-    assert "temp" in data or "error" in data
+    assert "temp_c" in data or "error" in data
 
 
 @pytest.mark.asyncio

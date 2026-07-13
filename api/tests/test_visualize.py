@@ -84,8 +84,9 @@ async def test_visualize_generates_preview(
     assert resp.status_code == 200
     data = resp.json()
     assert "preview_url" in data
-    assert data["cached"] is False
-    assert data["method"] == "composite"
+    assert data.get("cached") is False
+    assert data.get("method") == "composite"
+    assert data.get("status") == "completed"
 
     # Second call should return cached
     resp2 = await client.post(
@@ -94,6 +95,67 @@ async def test_visualize_generates_preview(
     )
     assert resp2.status_code == 200
     assert resp2.json()["cached"] is True
+    assert resp2.json().get("status") == "completed"
+
+
+@pytest.mark.asyncio
+async def test_visualize_daily_limit(
+    client, auth_headers, test_outfit, test_item, clean_db, monkeypatch
+):
+    """429 when daily try-on limit is exceeded."""
+    from pathlib import Path
+
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "tryon_daily_limit_free", 1)
+
+    png = _make_test_png(200, 400)
+    up = await client.post(
+        "/me/try-on-photo",
+        headers=auth_headers,
+        files={"image": ("body.png", png, "image/png")},
+    )
+    assert up.status_code == 201
+
+    item_key = f"users/test-user-001/items/{test_item}.png"
+    path = Path("uploads") / item_key
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(_make_test_png(80, 80, (200, 50, 50)))
+
+    from app.database.pool import get_pool
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE items SET image_url = $1 WHERE id = $2",
+            item_key,
+            test_item,
+        )
+        await conn.execute(
+            "UPDATE outfits SET preview_image_key = NULL WHERE id = $1",
+            test_outfit,
+        )
+
+    first = await client.post(
+        f"/outfits/{test_outfit}/visualize",
+        headers=auth_headers,
+        params={"force": True},
+    )
+    assert first.status_code == 200
+
+    # Clear cache so second call would regenerate
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE outfits SET preview_image_key = NULL WHERE id = $1",
+            test_outfit,
+        )
+
+    second = await client.post(
+        f"/outfits/{test_outfit}/visualize",
+        headers=auth_headers,
+        params={"force": True},
+    )
+    assert second.status_code == 429
 
 
 @pytest.mark.asyncio

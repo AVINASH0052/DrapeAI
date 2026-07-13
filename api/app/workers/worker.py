@@ -51,6 +51,7 @@ class WorkerSettings:
     functions = [
         "app.workers.tasks.process_upload",
         "app.workers.tasks.regenerate_embedding",
+        "app.workers.tasks.process_try_on",
     ]
 
     # Scheduled cron jobs
@@ -64,6 +65,11 @@ class WorkerSettings:
     on_shutdown = shutdown
     redis_settings = _parse_redis_url()
     max_jobs = 5        # Concurrent task limit
-    job_timeout = 300   # 5 min max per task
+    # process_try_on can block on a cold RunPod worker for up to
+    # RUNPOD_TRYON_TIMEOUT_SEC (~900s) plus fallback-provider time; this
+    # ceiling must exceed that or ARQ kills the task before it can complete
+    # or fail over. Other tasks (upload/embedding) finish in seconds, so a
+    # higher ceiling doesn't change their behavior.
+    job_timeout = 960   # 16 min max per task
     keep_result = 3600  # Keep results for 1 hour
     health_check_interval = 30

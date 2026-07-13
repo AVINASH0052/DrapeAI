@@ -174,7 +174,7 @@ class _OutfitCardState extends ConsumerState<OutfitCard> {
                 const SizedBox(height: 12),
                 // See me + action buttons
                 DrapeGradientButton(
-                  label: 'See me in this fit ✨',
+                  label: 'See me in this',
                   onPressed: () => showOutfitVisualizeSheet(context, outfit),
                 ),
                 const SizedBox(height: 14),
@@ -242,7 +242,8 @@ class _OutfitCardState extends ConsumerState<OutfitCard> {
               ],
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

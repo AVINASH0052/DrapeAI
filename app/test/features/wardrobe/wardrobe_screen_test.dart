@@ -63,23 +63,23 @@ void main() {
       expect(find.byType(WardrobeScreen), findsOneWidget);
     });
 
-    testWidgets('displays the "Wardrobe" title', (WidgetTester tester) async {
+    testWidgets('displays the "Closet" title', (WidgetTester tester) async {
       await tester.pumpWidget(_buildTestableWardrobeScreen());
       await tester.pumpAndSettle();
-      expect(find.text('Wardrobe'), findsOneWidget);
+      expect(find.text('Closet'), findsOneWidget);
     });
 
     testWidgets('displays the search icon', (WidgetTester tester) async {
       await tester.pumpWidget(_buildTestableWardrobeScreen());
       await tester.pumpAndSettle();
-      expect(find.byIcon(Icons.search), findsOneWidget);
+      expect(find.byIcon(Icons.search_rounded), findsOneWidget);
     });
 
     testWidgets('displays the notification bell icon',
         (WidgetTester tester) async {
       await tester.pumpWidget(_buildTestableWardrobeScreen());
       await tester.pumpAndSettle();
-      expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_none_rounded), findsOneWidget);
     });
 
     testWidgets('displays category filter chips',
@@ -99,7 +99,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
-      expect(find.byIcon(Icons.add), findsOneWidget);
+      expect(find.byIcon(Icons.add_rounded), findsOneWidget);
     });
 
     testWidgets('shows item count label when items are loaded',
@@ -108,7 +108,7 @@ void main() {
       await tester.pumpWidget(_buildTestableWardrobeScreen(items: items));
       await tester.pumpAndSettle();
 
-      expect(find.text('5 ITEMS'), findsOneWidget);
+      expect(find.text('5 PIECES'), findsOneWidget);
     });
 
     testWidgets('shows empty state when wardrobe has no items',
@@ -116,8 +116,8 @@ void main() {
       await tester.pumpWidget(_buildTestableWardrobeScreen(items: []));
       await tester.pumpAndSettle();
 
-      expect(find.text('An empty closet.'), findsOneWidget);
-      expect(find.text('Add an item'), findsOneWidget);
+      expect(find.text('empty closet energy'), findsOneWidget);
+      expect(find.text('Add first piece'), findsOneWidget);
     });
   });
 }

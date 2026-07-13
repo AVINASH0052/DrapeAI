@@ -71,3 +71,24 @@ async def send_daily_push(ctx: dict[str, Any]) -> str:
     except Exception as e:
         logger.error(f"[worker] send_daily_push failed: {e!r}")
         raise
+
+
+async def process_try_on(
+    ctx: dict[str, Any],
+    job_id: str,
+    user_id: str,
+    outfit_id: str,
+) -> str:
+    """Generate outfit try-on preview for an async job."""
+    from app.services.try_on_job import run_visualize_job
+
+    logger.info(f"[worker] process_try_on: job={job_id} outfit={outfit_id}")
+    try:
+        result = await run_visualize_job(job_id, user_id, outfit_id)
+        logger.info(
+            f"[worker] process_try_on complete: job={job_id} status={result.get('status')}"
+        )
+        return f"ok:{job_id}"
+    except Exception as e:
+        logger.error(f"[worker] process_try_on failed: job={job_id}: {e!r}")
+        raise

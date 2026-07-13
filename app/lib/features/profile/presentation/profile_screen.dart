@@ -358,7 +358,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Add a full-body photo once. We\'ll composite outfits from clothes you already own.',
+                          'See AI-generated photos of you wearing outfits from your wardrobe. Add one full-body photo — plain background, head to toe.',
                           style: AppTypography.caption,
                         ),
                         const SizedBox(height: 14),

@@ -57,7 +57,7 @@ async def close_http_client() -> None:
     """Close the shared client. Call from lifespan shutdown."""
     global _http_client
     if _http_client and not _http_client.is_closed:
-        await _http_client.close()
+        await _http_client.aclose()
         _http_client = None
         logger.info("Shared httpx client closed")
 

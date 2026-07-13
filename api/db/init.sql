@@ -103,6 +103,12 @@ CREATE TABLE IF NOT EXISTS items (
     is_active        BOOLEAN NOT NULL DEFAULT TRUE,
     is_demo          BOOLEAN NOT NULL DEFAULT FALSE,
 
+    -- Try-on garment reference pre-flight check (cached by image_url)
+    tryon_ref_checked_key TEXT,
+    tryon_ref_ok           BOOLEAN,
+    tryon_ref_issue        TEXT,
+    tryon_ref_reason       TEXT,
+
     created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -264,3 +270,27 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_id
     ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
     ON notifications(user_id, is_read) WHERE is_read = FALSE;
+
+-- ============================================================
+-- try_on_jobs (async outfit visualization)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS try_on_jobs (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    outfit_id       UUID REFERENCES outfits(id) ON DELETE CASCADE,
+    session_id      UUID,
+    status          TEXT NOT NULL DEFAULT 'queued',
+    provider        TEXT,
+    model           TEXT,
+    method          TEXT,
+    result_key      TEXT,
+    error_message   TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    started_at      TIMESTAMPTZ,
+    completed_at    TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_try_on_jobs_user_created
+    ON try_on_jobs(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_try_on_jobs_outfit
+    ON try_on_jobs(outfit_id) WHERE outfit_id IS NOT NULL;

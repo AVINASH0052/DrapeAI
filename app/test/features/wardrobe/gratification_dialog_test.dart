@@ -30,19 +30,19 @@ Widget _buildTestableDialog() {
 
 void main() {
   group('GratificationDialog', () {
-    testWidgets('renders with the title "Three items added!"',
+    testWidgets("renders with the title '3 pieces. let's cook.'",
         (WidgetTester tester) async {
       await tester.pumpWidget(_buildTestableDialog());
       await tester.pumpAndSettle();
 
-      expect(find.text('Three items added!'), findsOneWidget);
+      expect(find.text("3 pieces. let's cook."), findsOneWidget);
     });
 
     testWidgets('displays the celebration emoji', (WidgetTester tester) async {
       await tester.pumpWidget(_buildTestableDialog());
       await tester.pumpAndSettle();
 
-      expect(find.text('🎉'), findsOneWidget);
+      expect(find.text('🔥'), findsOneWidget);
     });
 
     testWidgets('displays body text explaining outfit generation',
@@ -51,45 +51,40 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.textContaining('You have enough for your first AI outfit'),
+        find.textContaining('Your closet has enough for your first AI fit'),
         findsOneWidget,
       );
     });
 
-    testWidgets('displays the "Generate Outfit" button',
+    testWidgets('displays the "Show me fits" button',
         (WidgetTester tester) async {
       await tester.pumpWidget(_buildTestableDialog());
       await tester.pumpAndSettle();
 
-      expect(find.text('Generate Outfit'), findsOneWidget);
-      expect(
-        find.widgetWithText(ElevatedButton, 'Generate Outfit'),
-        findsOneWidget,
-      );
+      expect(find.text('Show me fits \u2728'), findsOneWidget);
     });
 
-    testWidgets('displays the "Keep Adding" button',
+    testWidgets('displays the "keep adding" button',
         (WidgetTester tester) async {
       await tester.pumpWidget(_buildTestableDialog());
       await tester.pumpAndSettle();
 
-      expect(find.text('Keep Adding'), findsOneWidget);
       expect(
-        find.widgetWithText(TextButton, 'Keep Adding'),
+        find.widgetWithText(TextButton, 'keep adding'),
         findsOneWidget,
       );
     });
 
-    testWidgets('"Keep Adding" button closes the dialog',
+    testWidgets('"keep adding" button closes the dialog',
         (WidgetTester tester) async {
       await tester.pumpWidget(_buildTestableDialog());
       await tester.pumpAndSettle();
 
       // Tap "Keep Adding" and wait for the dialog to close.
-      await tester.tap(find.text('Keep Adding'));
+      await tester.tap(find.text('keep adding'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Three items added!'), findsNothing);
+      expect(find.text("3 pieces. let's cook."), findsNothing);
     });
   });
 }
