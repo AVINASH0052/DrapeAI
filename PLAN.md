@@ -183,3 +183,9 @@ Every aspect of this project is documented in detail:
 ## 16. One-Line Summary
 
 **Build the trimmed MVP loop (Upload with Photo Guide → Hybrid AI Outfit → Save/Shuffle) in Flutter + FastAPI, ship to closed beta with 30–50 users, then layer calendar/analytics in v1.1 and monetisation in v2 at ₹99.**
+
+---
+
+## 17. Market path (Jul 2026)
+
+Product is past prototype; public stores still blocked. Execute **[docs/MARKET_LAUNCH_PLAN.md](docs/MARKET_LAUNCH_PLAN.md)**: production hygiene → closed beta → India Play → monetize only after week-2 retention. Do not market try-on or ship Razorpay until retention proof.
