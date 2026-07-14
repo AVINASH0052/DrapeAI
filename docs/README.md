@@ -34,6 +34,7 @@ Everything needed to build the Flutter mobile app.
 
 | Document | What It Covers |
 |---|---|
+| [Market Launch Plan](MARKET_LAUNCH_PLAN.md) | Closed beta → Play Store path: blockers, phases, metrics, what not to build |
 | [Architecture](architecture.md) | System topology, service boundaries, data flows, auth, caching, scaling path |
 | [Deployment](deployment.md) | Hetzner setup, Docker Compose, Nginx + TLS, R2, Firebase, CI/CD, backups, monitoring |
 | [Store Submission](store_submission.md) | Play Store + App Store: signing, building, screenshots, listing copy, review guidelines |
