@@ -2,6 +2,8 @@
 
 > AI Outfit Assistant for India. Flutter (Android + iOS) + FastAPI + PostgreSQL. Solo build.
 
+**Documentation handbook:** [docs/README.md](docs/README.md) · agent rules: [docs/rules/AGENTS.md](docs/rules/AGENTS.md)
+
 ---
 
 ## Product Thesis

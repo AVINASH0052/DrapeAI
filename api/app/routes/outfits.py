@@ -133,7 +133,8 @@ async def visualize_outfit_preview(
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT o.preview_image_key, u.try_on_photo_key
+            SELECT o.preview_image_key, u.try_on_photo_key,
+                   u.avatar_status, u.avatar_error
             FROM outfits o
             JOIN users u ON u.id = o.user_id
             WHERE o.id = $1 AND o.user_id = $2
@@ -157,6 +158,11 @@ async def visualize_outfit_preview(
                 status_code=400,
                 detail="Upload a full-body photo in Profile → See me in outfits first.",
             )
+
+        # The photo is stored before background validation runs, so
+        # try_on_photo_key alone doesn't mean it's usable — generating from a
+        # rejected photo produces garbage and still costs a try-on.
+        try_on_job.check_avatar_ready(row["avatar_status"], row["avatar_error"])
 
         items = await get_outfit_items_from_db(conn, outfit_id, user.id)
         if not items:

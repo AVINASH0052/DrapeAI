@@ -2,6 +2,20 @@
 
 AI-powered personal stylist for India. Upload clothing items, get AI outfit recommendations, track what you wear, and build a smart digital wardrobe.
 
+## Documentation
+
+**Start here → [docs/README.md](docs/README.md)** (handbook index, Multi-tenant-style).
+
+| Need | Doc |
+|---|---|
+| Run locally | [docs/local-development/](docs/local-development/) |
+| Architecture | [docs/architecture/OVERVIEW.md](docs/architecture/OVERVIEW.md) |
+| Deploy / CI | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · [docs/deployment.md](docs/deployment.md) |
+| Session lessons | [docs/ops/SESSION-LESSONS.md](docs/ops/SESSION-LESSONS.md) |
+| Integrations | [docs/integrations/](docs/integrations/) |
+| Coding rules | [docs/rules/CODING-STANDARDS.md](docs/rules/CODING-STANDARDS.md) |
+| Agent invariants | [docs/rules/AGENTS.md](docs/rules/AGENTS.md) · [AGENTS.md](AGENTS.md) |
+
 ---
 
 ## Architecture
@@ -195,7 +209,6 @@ See `api/.env.example` for the full list.
 |--------|------|-------------|
 | `POST` | `/push/register` | Register FCM push token |
 | `GET` | `/notifications` | User notifications |
-| `GET` | `/demo/wardrobe` | Demo wardrobe items |
 
 ---
 

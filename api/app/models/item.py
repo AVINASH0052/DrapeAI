@@ -1,12 +1,14 @@
 """Item models."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 
 class ItemTags(BaseModel):
     category: str
     sub_category: str
+    display_name: str | None = None
+    notes: str | None = None
     primary_color: str
     secondary_colors: list[str] = []
     pattern: str = "solid"
@@ -35,9 +37,11 @@ class ItemResponse(BaseModel):
     wear_count: int = 0
     last_worn_at: datetime | None = None
     created_at: datetime
+    processing_status: str = "ready"
 
 
 class ItemUpdate(BaseModel):
+    display_name: str | None = Field(default=None, max_length=80)
     category: str | None = None
     sub_category: str | None = None
     primary_color: str | None = None
@@ -48,5 +52,5 @@ class ItemUpdate(BaseModel):
     formality: int | None = None
     season_tags: list[str] | None = None
     ethnic_flag: bool | None = None
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=500)
     purchase_price: int | None = None  # paise (INR x 100)

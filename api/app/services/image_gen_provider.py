@@ -532,3 +532,54 @@ async def generate_tryon_image(
 
     logger.warning(f"tryon: all providers failed; last_error={last_error!r}")
     return None
+
+
+def build_external_tryon_prompt() -> str:
+    template = load_prompt_template("external_tryon_v1")
+    if template:
+        return template.strip()
+    return (
+        "Dress the person in image 0 using the outfit shown in image 1. "
+        "Preserve face, hairstyle, body shape, and pose. "
+        "Keep the clothing design from image 1 as closely as possible. "
+        "Photorealistic. Do not change identity. Do not add text or watermarks."
+    )
+
+
+async def generate_external_tryon_image(
+    person_bytes: bytes,
+    garment_bytes: bytes,
+) -> Optional[TryOnImageResult]:
+    """Try-on using a single external outfit/garment reference image."""
+    prompt = build_external_tryon_prompt()
+    placeholder_items = [{"category": "top", "primary_color": "", "sub_category": "external"}]
+    last_error: Exception | None = None
+    for provider, model in _route_tryon():
+        if not _provider_configured(provider):
+            logger.debug(f"tryon external: skip {provider}/{model} — not configured")
+            continue
+        try:
+            image_bytes = await _call_provider(
+                provider,
+                model,
+                person_bytes,
+                [garment_bytes],
+                prompt,
+                items=placeholder_items,
+            )
+            image_bytes = _normalize_png(image_bytes)
+            await _track_tryon_cost(provider, model)
+            logger.info(
+                f"tryon external: success {provider}/{model} ({len(image_bytes)} bytes)"
+            )
+            return TryOnImageResult(
+                image_bytes=image_bytes,
+                provider=provider,
+                model=model,
+            )
+        except Exception as e:
+            last_error = e
+            logger.warning(f"tryon external: {provider}/{model} failed: {e!r}")
+
+    logger.warning(f"tryon external: all providers failed; last_error={last_error!r}")
+    return None

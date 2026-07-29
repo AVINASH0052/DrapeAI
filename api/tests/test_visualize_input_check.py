@@ -2,12 +2,13 @@
 
 import io
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from PIL import Image
 
 from app.services.tryon_input_check import InputCheckResult
+from tests.helpers import mark_avatar_ready, set_avatar_state
 
 
 def _make_test_png(w: int = 100, h: int = 150, color=(100, 150, 200)) -> bytes:
@@ -18,41 +19,70 @@ def _make_test_png(w: int = 100, h: int = 150, color=(100, 150, 200)) -> bytes:
 
 
 @pytest.mark.asyncio
-async def test_upload_rejects_bad_person_photo(client, auth_headers, clean_db):
-    bad_result = InputCheckResult(
-        ok=False, issue="back_view", reason="This photo shows your back, not your face."
+async def test_upload_is_accepted_then_validated_in_background(
+    client, auth_headers, clean_db
+):
+    """Upload is async: the photo is always accepted (202) and the person
+    check runs during background avatar prep, surfacing via avatar_status."""
+    resp = await client.post(
+        "/me/try-on-photo",
+        headers=auth_headers,
+        files={"image": ("body.png", _make_test_png(), "image/png")},
     )
-    with patch(
-        "app.routes.user.check_person_photo",
-        new=AsyncMock(return_value=bad_result),
-    ):
-        resp = await client.post(
-            "/me/try-on-photo",
-            headers=auth_headers,
-            files={"image": ("body.png", _make_test_png(), "image/png")},
-        )
-    assert resp.status_code == 400
-    assert "back" in resp.json()["detail"].lower()
-
-    # Rejected photo must not be persisted.
-    me = await client.get("/me", headers=auth_headers)
-    assert me.json()["try_on_photo_url"] is None
+    assert resp.status_code == 202
+    assert resp.json()["uploaded"] is True
+    assert resp.json()["avatar_status"] == "queued"
 
 
 @pytest.mark.asyncio
-async def test_upload_accepts_good_person_photo(client, auth_headers, clean_db):
-    good_result = InputCheckResult(ok=True, issue="none")
-    with patch(
-        "app.routes.user.check_person_photo",
-        new=AsyncMock(return_value=good_result),
-    ):
-        resp = await client.post(
-            "/me/try-on-photo",
-            headers=auth_headers,
-            files={"image": ("body.png", _make_test_png(), "image/png")},
-        )
-    assert resp.status_code == 201
-    assert resp.json()["uploaded"] is True
+async def test_visualize_blocked_when_person_photo_failed_validation(
+    client, auth_headers, test_outfit, test_item, clean_db
+):
+    """A body photo rejected by background validation must not reach the
+    provider. Regression guard: upload stores try_on_photo_key before the
+    check runs, so gating on that key alone would generate from a bad photo
+    and still consume a try-on."""
+    up = await client.post(
+        "/me/try-on-photo",
+        headers=auth_headers,
+        files={"image": ("body.png", _make_test_png(200, 400), "image/png")},
+    )
+    assert up.status_code == 202
+
+    await set_avatar_state(
+        "failed", "This photo shows your back, not your face."
+    )
+
+    resp = await client.post(
+        f"/outfits/{test_outfit}/visualize",
+        headers=auth_headers,
+        params={"force": True},
+    )
+    assert resp.status_code == 400
+    assert "back" in resp.json()["detail"]["message"].lower()
+    assert resp.json()["detail"]["avatar_status"] == "failed"
+
+
+@pytest.mark.asyncio
+async def test_visualize_asks_to_retry_while_avatar_still_preparing(
+    client, auth_headers, test_outfit, test_item, clean_db
+):
+    up = await client.post(
+        "/me/try-on-photo",
+        headers=auth_headers,
+        files={"image": ("body.png", _make_test_png(200, 400), "image/png")},
+    )
+    assert up.status_code == 202
+
+    await set_avatar_state("processing")
+
+    resp = await client.post(
+        f"/outfits/{test_outfit}/visualize",
+        headers=auth_headers,
+        params={"force": True},
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"]["avatar_status"] == "processing"
 
 
 @pytest.mark.asyncio
@@ -69,7 +99,8 @@ async def test_visualize_fails_on_bad_garment_reference(
         headers=auth_headers,
         files={"image": ("body.png", _make_test_png(200, 400), "image/png")},
     )
-    assert up.status_code == 201
+    assert up.status_code == 202
+    await mark_avatar_ready()
 
     item_key = f"users/test-user-001/items/{test_item}.png"
     path = Path("uploads") / item_key
@@ -120,7 +151,8 @@ async def test_garment_check_result_is_cached_on_item(
         headers=auth_headers,
         files={"image": ("body.png", _make_test_png(200, 400), "image/png")},
     )
-    assert up.status_code == 201
+    assert up.status_code == 202
+    await mark_avatar_ready()
 
     item_key = f"users/test-user-001/items/{test_item}.png"
     path = Path("uploads") / item_key

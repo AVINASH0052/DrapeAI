@@ -27,7 +27,8 @@ class PrivacyScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Text('Privacy Policy',
-                        style: AppTypography.headingSerif.copyWith(fontSize: 24)),
+                        style:
+                            AppTypography.headingSerif.copyWith(fontSize: 24)),
                   ],
                 ),
               ),
@@ -38,17 +39,17 @@ class PrivacyScreen extends StatelessWidget {
                     _LegalSection(
                       title: 'What we collect',
                       body:
-                          'Phone number or Google/Apple sign-in, wardrobe photos you upload, style quiz answers, outfit feedback (likes/dislikes), and push notification tokens if you opt in.',
+                          'Phone number or Google/Apple sign-in, the full-body photo you choose for your private avatar, wardrobe photos you upload, optional style preferences, outfit feedback, and push notification tokens if you opt in.',
                     ),
                     _LegalSection(
                       title: 'How we use AI',
                       body:
-                          'Your clothing photos are sent to AI vision models (OpenAI and partners) for auto-tagging. Outfit suggestions use a rule engine plus LLM ranking. We never sell your images.',
+                          'Your clothing photos may be sent to configured AI providers for auto-tagging. Your body photo and selected garments are processed to create private try-on renders. The avatar is a visual 2.5D representation, not a medical scan or an exact measurement tool. We never sell your images.',
                     ),
                     _LegalSection(
                       title: 'Storage',
                       body:
-                          'Photos are stored on Cloudflare R2. Profile and wardrobe data live in encrypted PostgreSQL. Firebase handles authentication.',
+                          'Source and derived avatar images and wardrobe photos are stored on Cloudflare R2. Profile and wardrobe data live in PostgreSQL. Firebase handles authentication. You can replace or delete your body photo from the app.',
                     ),
                     _LegalSection(
                       title: 'Your rights',
@@ -57,7 +58,7 @@ class PrivacyScreen extends StatelessWidget {
                     ),
                     _LegalSection(
                       title: 'Contact',
-                      body: 'privacy@drapeai.app',
+                      body: 'privacy@sugatai.com',
                     ),
                     SizedBox(height: 24),
                     Text(
@@ -96,7 +97,8 @@ class TermsScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Text('Terms of Service',
-                        style: AppTypography.headingSerif.copyWith(fontSize: 24)),
+                        style:
+                            AppTypography.headingSerif.copyWith(fontSize: 24)),
                   ],
                 ),
               ),
@@ -107,7 +109,7 @@ class TermsScreen extends StatelessWidget {
                     _LegalSection(
                       title: 'The deal',
                       body:
-                          'DrapeAI is an AI styling assistant. We suggest outfits from your wardrobe — we are not liable for fashion choices at weddings, dates, or board meetings. 😄',
+                          'Sugatai is an AI styling assistant. We suggest outfits from your wardrobe and provide visual previews, not guarantees of real-world fit or appearance.',
                     ),
                     _LegalSection(
                       title: 'Your content',
@@ -131,7 +133,7 @@ class TermsScreen extends StatelessWidget {
                     ),
                     _LegalSection(
                       title: 'Contact',
-                      body: 'help@drapeai.app',
+                      body: 'help@sugatai.com',
                     ),
                     SizedBox(height: 24),
                     Text(
@@ -164,8 +166,8 @@ class _LegalSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ShaderMask(
-              shaderCallback: (_) =>
-                  AppGradients.cta.createShader(const Rect.fromLTWH(0, 0, 200, 30)),
+              shaderCallback: (_) => AppGradients.cta
+                  .createShader(const Rect.fromLTWH(0, 0, 200, 30)),
               child: Text(
                 title,
                 style: GoogleFonts.syne(

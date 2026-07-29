@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// DrapeAI — "Midnight Masala" palette.
+/// Sugatai — "Midnight Masala" palette.
 /// Saffron heat × neon Gen Z × global streetwear. Works in Mumbai and Manhattan.
 class AppColors {
   AppColors._();

@@ -22,6 +22,9 @@ class UserProfile {
   final String? phone;
   final String? photoUrl;
   final String? tryOnPhotoUrl;
+  final String avatarStatus;
+  final String? avatarBaseUrl;
+  final String? avatarError;
   final DateTime? createdAt;
   final List<String> styleTags;
   final String? city;
@@ -34,6 +37,9 @@ class UserProfile {
     this.phone,
     this.photoUrl,
     this.tryOnPhotoUrl,
+    this.avatarStatus = 'missing',
+    this.avatarBaseUrl,
+    this.avatarError,
     this.createdAt,
     this.styleTags = const [],
     this.city,
@@ -73,6 +79,9 @@ class UserProfile {
       phone: me['phone'] as String?,
       photoUrl: me['photo_url'] as String?,
       tryOnPhotoUrl: me['try_on_photo_url'] as String?,
+      avatarStatus: me['avatar_status'] as String? ?? 'missing',
+      avatarBaseUrl: me['avatar_base_url'] as String?,
+      avatarError: me['avatar_error'] as String?,
       createdAt: me['created_at'] != null
           ? DateTime.tryParse(me['created_at'] as String)
           : null,
@@ -92,8 +101,18 @@ class UserProfile {
   String get memberSince {
     if (createdAt == null) return '';
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return 'member since ${months[createdAt!.month - 1]} ${createdAt!.year}';
   }

@@ -56,15 +56,66 @@ class ItemCard extends StatelessWidget {
                           item.thumbnailUrl ?? item.imageUrl),
                       fit: BoxFit.cover,
                       placeholder: (_, __) => Container(
-                        color: isDark ? AppColorsDark.gray100 : AppColors.gray100,
+                        color:
+                            isDark ? AppColorsDark.gray100 : AppColors.gray100,
                       ),
                       errorWidget: (_, __, ___) => Container(
-                        color: isDark ? AppColorsDark.gray100 : AppColors.gray100,
+                        color:
+                            isDark ? AppColorsDark.gray100 : AppColors.gray100,
                         child: Icon(Icons.broken_image_outlined,
                             color: AppColors.textMuted(context)),
                       ),
                     ),
-                    if (item.ethnicFlag)
+                    if (item.isProcessing)
+                      Positioned.fill(
+                        child: ColoredBox(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'AI tagging',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    if (item.isFailed)
+                      Positioned(
+                        top: 6,
+                        left: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.red,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Text(
+                            'Failed',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (item.ethnicFlag && !item.isProcessing)
                       Positioned(
                         top: 6,
                         right: 6,
@@ -75,8 +126,11 @@ class ItemCard extends StatelessWidget {
                             gradient: AppGradients.ethnic,
                             borderRadius: BorderRadius.circular(999),
                           ),
-                          child: const Text('✨',
-                              style: TextStyle(fontSize: 10)),
+                          child: const Icon(
+                            Icons.auto_awesome,
+                            size: 10,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                   ],
@@ -88,7 +142,9 @@ class ItemCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.subCategory.replaceAll('_', ' '),
+                      (item.displayName?.trim().isNotEmpty ?? false)
+                          ? item.displayName!
+                          : item.subCategory.replaceAll('_', ' '),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,

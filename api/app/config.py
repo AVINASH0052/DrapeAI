@@ -37,20 +37,19 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_base_url: str = "https://api.groq.com/openai/v1"
 
-    # Google Gemini (image generation / editing for outfit try-on)
+    # Google Gemini (primary image generation / editing for outfit try-on)
     gemini_api_key: str = ""
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
 
-    # Outfit try-on image generation — provider failover
-    # Recommended: cloudflare → nvidia → openai → gemini
-    tryon_provider_primary: str = "cloudflare"
-    tryon_model_primary: str = "@cf/black-forest-labs/flux-2-klein-9b"
-    tryon_provider_secondary: str = "nvidia"
-    tryon_model_secondary: str = "qwen/qwen-image-edit"
-    tryon_provider_tertiary: str = "openai"
-    tryon_model_tertiary: str = "gpt-image-1"
-    tryon_provider_quaternary: str = "gemini"
-    tryon_model_quaternary: str = "gemini-2.5-flash-image"
+    # Outfit try-on image generation, with Gemini first.
+    tryon_provider_primary: str = "gemini"
+    tryon_model_primary: str = "gemini-2.5-flash-image"
+    tryon_provider_secondary: str = "cloudflare"
+    tryon_model_secondary: str = "@cf/black-forest-labs/flux-2-klein-9b"
+    tryon_provider_tertiary: str = "nvidia"
+    tryon_model_tertiary: str = "qwen/qwen-image-edit"
+    tryon_provider_quaternary: str = "openai"
+    tryon_model_quaternary: str = "gpt-image-1"
     tryon_fallback_composite: bool = True
     tryon_image_size: str = "1024x1536"       # OpenAI: 1024x1024 | 1024x1536 | 1536x1024
     tryon_image_quality: str = "medium"       # OpenAI: low | medium | high

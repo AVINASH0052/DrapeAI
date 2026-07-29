@@ -32,7 +32,7 @@ async def shutdown(ctx: dict) -> None:
     logger.info("ARQ worker stopped — DB pool closed")
 
 
-def _parse_redis_url() -> RedisSettings:
+def _parse_redis_url(*, fast_fail: bool = False) -> RedisSettings:
     """Parse redis_url into ARQ RedisSettings."""
     from urllib.parse import urlparse
     parsed = urlparse(settings.redis_url)
@@ -41,6 +41,8 @@ def _parse_redis_url() -> RedisSettings:
         port=parsed.port or 6379,
         database=int(parsed.path.lstrip("/") or 0),
         password=parsed.password,
+        conn_timeout=0.25 if fast_fail else 1,
+        conn_retries=0 if fast_fail else 5,
     )
 
 
@@ -49,9 +51,11 @@ class WorkerSettings:
 
     # Task functions the worker can execute
     functions = [
+        "app.workers.tasks.process_avatar",
         "app.workers.tasks.process_upload",
         "app.workers.tasks.regenerate_embedding",
         "app.workers.tasks.process_try_on",
+        "app.workers.tasks.process_external_try_on",
     ]
 
     # Scheduled cron jobs

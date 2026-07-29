@@ -43,19 +43,55 @@ class ApiClient {
     await _dio.delete('/me/try-on-photo');
   }
 
-  // --- Demo wardrobe ---
-  Future<Map<String, dynamic>> getDemoWardrobe() async {
-    final resp = await _dio.get('/demo/wardrobe');
+  Future<Map<String, dynamic>> getAvatarProfile() async {
+    final resp = await _dio.get('/me/avatar-profile');
     return resp.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> activateDemoWardrobe() async {
-    final resp = await _dio.post('/demo/activate');
+  Future<Map<String, dynamic>> renderAvatar(
+    Map<String, String> slots,
+  ) async {
+    final resp = await _dio.post(
+      '/avatar/render',
+      data: {'slots': slots},
+      options: Options(receiveTimeout: const Duration(minutes: 2)),
+    );
     return resp.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> clearDemoWardrobe() async {
-    final resp = await _dio.delete('/demo/clear');
+  Future<Map<String, dynamic>> avatarRenderStatus(
+    String outfitId, {
+    String? jobId,
+  }) async {
+    final resp = await _dio.get(
+      '/avatar/render/$outfitId/status',
+      queryParameters: {if (jobId != null) 'job_id': jobId},
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> externalTryOn(String filePath) async {
+    final formData = FormData.fromMap({
+      'reference_image': await MultipartFile.fromFile(filePath),
+    });
+    final resp = await _dio.post(
+      '/try-on/external',
+      data: formData,
+      options: Options(receiveTimeout: const Duration(minutes: 5)),
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> externalTryOnStatus(String sessionId) async {
+    final resp = await _dio.get('/try-on/external/$sessionId');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> tryOnHistory({int limit = 20}) async {
+    final resp = await _dio.get(
+      '/try-on/history',
+      queryParameters: {'limit': limit},
+    );
     return resp.data as Map<String, dynamic>;
   }
 
@@ -145,7 +181,8 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> shuffleOutfit(String occasion) async {
-    final resp = await _dio.post('/outfits/shuffle', data: {'occasion': occasion});
+    final resp =
+        await _dio.post('/outfits/shuffle', data: {'occasion': occasion});
     return resp.data as Map<String, dynamic>;
   }
 
@@ -226,8 +263,8 @@ class ApiClient {
   // --- Item pairings ---
   Future<Map<String, dynamic>> getPairings(String itemId,
       {int limit = 5}) async {
-    final resp = await _dio.get('/items/$itemId/pairings',
-        queryParameters: {'limit': limit});
+    final resp = await _dio
+        .get('/items/$itemId/pairings', queryParameters: {'limit': limit});
     return resp.data as Map<String, dynamic>;
   }
 
@@ -260,8 +297,8 @@ class ApiClient {
 
   // --- Push ---
   Future<void> registerPushToken(String token, String platform) async {
-    await _dio.post(
-        '/push/register', data: {'token': token, 'platform': platform});
+    await _dio
+        .post('/push/register', data: {'token': token, 'platform': platform});
   }
 
   Future<void> unregisterPushToken() async {
@@ -282,8 +319,10 @@ class ApiClient {
   }
 
   // --- Notifications ---
-  Future<Map<String, dynamic>> getNotifications({int limit = 50, int offset = 0}) async {
-    final resp = await _dio.get('/notifications', queryParameters: {'limit': limit, 'offset': offset});
+  Future<Map<String, dynamic>> getNotifications(
+      {int limit = 50, int offset = 0}) async {
+    final resp = await _dio.get('/notifications',
+        queryParameters: {'limit': limit, 'offset': offset});
     return resp.data as Map<String, dynamic>;
   }
 

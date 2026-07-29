@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
@@ -11,6 +12,8 @@ import '../providers/today_provider.dart';
 import '../providers/weather_provider.dart';
 import '../widgets/outfit_card.dart';
 import '../widgets/try_on_photo_nudge.dart';
+import '../../wardrobe/models/item_model.dart';
+import '../../wardrobe/providers/wardrobe_provider.dart';
 
 class TodayScreen extends ConsumerStatefulWidget {
   const TodayScreen({super.key});
@@ -26,7 +29,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     ('casual', 'Casual'),
     ('work', 'Work'),
     ('party', 'Party'),
-    ('festive', 'Festive ✨'),
+    ('festive', 'Festive'),
     ('date', 'Date'),
   ];
 
@@ -34,19 +37,23 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     setState(() => _generating = true);
     try {
       final api = ref.read(apiClientProvider);
-      await api.generateOutfits(occasion.replaceAll(' ✨', ''));
+      await api.generateOutfits(occasion);
       ref.invalidate(todayOutfitsProvider);
     } catch (e) {
       if (mounted) {
+        final detail = e is DioException && e.response?.data is Map
+            ? (e.response?.data as Map)['detail']?.toString()
+            : null;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('AI had a moment — try again: $e'),
+            content:
+                Text(detail ?? 'Could not generate fits. Please try again.'),
             backgroundColor: AppColors.red,
           ),
         );
       }
     } finally {
-      setState(() => _generating = false);
+      if (mounted) setState(() => _generating = false);
     }
   }
 
@@ -54,6 +61,7 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
   Widget build(BuildContext context) {
     final outfitsAsync = ref.watch(todayOutfitsProvider);
     final occasion = ref.watch(selectedOccasionProvider);
+    final wardrobe = ref.watch(wardrobeProvider).valueOrNull ?? const <Item>[];
 
     return Scaffold(
       extendBody: true,
@@ -74,8 +82,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                   ),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
                 child: _WeatherLine(),
               ),
               const TryOnPhotoNudge(),
@@ -92,8 +100,9 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                     return DrapeChip(
                       label: label,
                       active: isActive,
-                      onTap: () =>
-                          ref.read(selectedOccasionProvider.notifier).state = key,
+                      onTap: () => ref
+                          .read(selectedOccasionProvider.notifier)
+                          .state = key,
                     );
                   },
                 ),
@@ -109,20 +118,25 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('🌧️', style: TextStyle(fontSize: 32)),
+                          const Icon(
+                            Icons.cloud_off_rounded,
+                            size: 36,
+                            color: AppColors.orange,
+                          ),
                           const SizedBox(height: 12),
                           Text('fits didn\'t load', style: AppTypography.title),
                           const SizedBox(height: 12),
                           DrapeGradientButton(
                             label: 'Retry',
-                            onPressed: () => ref.invalidate(todayOutfitsProvider),
+                            onPressed: () =>
+                                ref.invalidate(todayOutfitsProvider),
                           ),
                         ],
                       ),
                     ),
                   ),
                   data: (outfits) => outfits.isEmpty
-                      ? _buildEmpty(occasion)
+                      ? _buildEmpty(occasion, wardrobe)
                       : RefreshIndicator(
                           color: AppColors.orange,
                           onRefresh: () async => _generate(occasion),
@@ -131,7 +145,8 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
                             itemCount: outfits.length,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(height: 16),
-                            itemBuilder: (_, i) => TweenAnimationBuilder<double>(
+                            itemBuilder: (_, i) =>
+                                TweenAnimationBuilder<double>(
                               tween: Tween(begin: 0.0, end: 1.0),
                               duration: Duration(milliseconds: 300 + i * 100),
                               builder: (_, value, child) => Opacity(
@@ -154,7 +169,33 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
     );
   }
 
-  Widget _buildEmpty(String occasion) {
+  Widget _buildEmpty(String occasion, List<Item> wardrobe) {
+    final ready =
+        wardrobe.where((item) => !item.isProcessing && !item.isFailed);
+    final hasTop = ready.any(
+      (item) =>
+          item.category == 'top' ||
+          item.category == 'ethnic' ||
+          {'kurta', 'shirt', 't-shirt'}.contains(item.subCategory),
+    );
+    final hasBottom = ready.any((item) => item.category == 'bottom');
+    final hasStandalone = ready.any(
+      (item) =>
+          item.category == 'dress' ||
+          (item.category == 'ethnic' &&
+              {'saree', 'lehenga', 'sherwani', 'anarkali'}
+                  .contains(item.subCategory)),
+    );
+    final canGenerate = hasStandalone || (hasTop && hasBottom);
+    final missingLabel = !hasTop
+        ? 'Add a top'
+        : !hasBottom && !hasStandalone
+            ? 'Add a bottom'
+            : 'Generate fits';
+    final helper = canGenerate
+        ? 'AI picks a complete look from your closet.'
+        : 'Add a matching ${!hasTop ? 'top' : 'bottom'} to build a complete look.';
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -164,7 +205,11 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('✨', style: TextStyle(fontSize: 40)),
+              const Icon(
+                Icons.auto_awesome_rounded,
+                size: 40,
+                color: AppColors.orange,
+              ),
               const SizedBox(height: 12),
               Text(
                 'no $occasion fits yet',
@@ -173,16 +218,22 @@ class _TodayScreenState extends ConsumerState<TodayScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'hit generate — AI picks from your closet in seconds',
+                helper,
                 textAlign: TextAlign.center,
                 style: AppTypography.body,
               ),
               const SizedBox(height: 20),
               DrapeGradientButton(
-                label: 'Generate fits',
-                icon: Icons.auto_awesome_rounded,
-                loading: _generating,
-                onPressed: _generating ? null : () => _generate(occasion),
+                label: missingLabel,
+                icon: canGenerate
+                    ? Icons.auto_awesome_rounded
+                    : Icons.add_a_photo_outlined,
+                loading: canGenerate && _generating,
+                onPressed: _generating
+                    ? null
+                    : canGenerate
+                        ? () => _generate(occasion)
+                        : () => context.pushNamed('camera'),
               ),
             ],
           ),
@@ -198,7 +249,7 @@ class _WeatherLine extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final weatherAsync = ref.watch(weatherProvider);
-  final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return weatherAsync.when(
       loading: () => Shimmer.fromColors(
@@ -213,16 +264,28 @@ class _WeatherLine extends ConsumerWidget {
           ),
         ),
       ),
-      error: (_, __) => Text(
-        '🌤 weather unavailable',
-        style: AppTypography.caption,
+      error: (_, __) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.cloud_off_outlined, size: 14, color: AppColors.ink3),
+          const SizedBox(width: 4),
+          Text('weather unavailable', style: AppTypography.caption),
+        ],
       ),
-      data: (weather) => Text(
-        '🌡 ${weather.display}',
-        style: AppTypography.caption.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.orange,
-        ),
+      data: (weather) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.thermostat_rounded,
+              size: 14, color: AppColors.orange),
+          const SizedBox(width: 4),
+          Text(
+            weather.display,
+            style: AppTypography.caption.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.orange,
+            ),
+          ),
+        ],
       ),
     );
   }

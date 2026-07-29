@@ -140,5 +140,14 @@ async def clean_db(setup_db):
             "DELETE FROM preferences WHERE user_id = 'test-user-001'"
         )
         await conn.execute(
-            "UPDATE users SET try_on_photo_key = NULL WHERE id = 'test-user-001'"
+            """
+            UPDATE users
+            SET try_on_photo_key = NULL,
+                avatar_status = 'missing',
+                avatar_base_key = NULL,
+                avatar_profile = '{}'::jsonb,
+                avatar_error = NULL,
+                avatar_analyzed_at = NULL
+            WHERE id = 'test-user-001'
+            """
         )

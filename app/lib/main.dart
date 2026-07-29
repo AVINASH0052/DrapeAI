@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import 'core/brand/brand.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/router/app_router.dart';
@@ -11,15 +13,24 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const ProviderScope(child: DrapeAIApp()));
+  runApp(const ProviderScope(child: SugataiApp()));
 }
 
-class DrapeAIApp extends ConsumerWidget {
-  const DrapeAIApp({super.key});
+class SugataiApp extends ConsumerWidget {
+  const SugataiApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,17 +39,28 @@ class DrapeAIApp extends ConsumerWidget {
     final isOffline = ref.watch(isOfflineProvider);
 
     return MaterialApp.router(
-      title: 'DrapeAI',
+      title: Brand.name,
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       routerConfig: router,
       builder: (context, child) {
-        return Column(
+        // Overlay the banner so it never steals status-bar layout space.
+        return Stack(
+          fit: StackFit.expand,
           children: [
-            DrapeOfflineBanner(isOffline: isOffline),
-            Expanded(child: child ?? const SizedBox.shrink()),
+            ColoredBox(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: child ?? const SizedBox.shrink(),
+            ),
+            if (isOffline)
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: DrapeOfflineBanner(isOffline: true),
+              ),
           ],
         );
       },

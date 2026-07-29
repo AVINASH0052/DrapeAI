@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../brand/brand.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_gradients.dart';
 import '../theme/app_theme.dart';
@@ -82,7 +83,7 @@ class _GlowOrb extends StatelessWidget {
   }
 }
 
-/// Drape wordmark with gradient dot.
+/// Sugatai wordmark.
 class DrapeWordmark extends StatelessWidget {
   final double size;
 
@@ -90,47 +91,19 @@ class DrapeWordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = AppColors.textPrimary(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        ShaderMask(
-          shaderCallback: (_) => AppGradients.hero.createShader(
-            Rect.fromLTWH(0, 0, size * 2.5, size),
-          ),
-          child: Text(
-            'drape',
-            style: GoogleFonts.syne(
-              fontSize: size,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              letterSpacing: -1,
-            ),
-          ),
+    return ShaderMask(
+      shaderCallback: (_) => AppGradients.hero.createShader(
+        Rect.fromLTWH(0, 0, size * 3.2, size),
+      ),
+      child: Text(
+        Brand.name,
+        style: GoogleFonts.syne(
+          fontSize: size,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+          letterSpacing: -1.2,
         ),
-        Text(
-          '.',
-          style: GoogleFonts.syne(
-            fontSize: size,
-            fontWeight: FontWeight.w800,
-            foreground: Paint()
-              ..shader = AppGradients.cta.createShader(
-                Rect.fromLTWH(0, 0, size, size),
-              ),
-          ),
-        ),
-        Text(
-          'ai',
-          style: GoogleFonts.spaceMono(
-            fontSize: size * 0.55,
-            fontWeight: FontWeight.w700,
-            color: ink,
-            letterSpacing: -0.5,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

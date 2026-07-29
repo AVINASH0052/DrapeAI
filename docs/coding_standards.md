@@ -2,6 +2,8 @@
 
 Rules that apply to all code written for DrapeAI. Read this before writing any code.
 
+> **Preferred entry for agents:** [rules/CODING-STANDARDS.md](rules/CODING-STANDARDS.md) · [rules/AGENTS.md](rules/AGENTS.md) · [rules/CODING-RULES-HANDBOOK.md](rules/CODING-RULES-HANDBOOK.md)
+
 ---
 
 ## Critical Rules

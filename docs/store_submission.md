@@ -29,6 +29,7 @@ Complete ALL of these before submitting to either store:
   - [ ] Large phone (6.7" -- e.g., iPhone 15 Pro Max, Pixel 8 Pro)
 - [ ] Camera permission request shows clear rationale ("DrapeAI needs camera access to photograph your clothes")
 - [ ] Photo library permission request shows clear rationale
+- [ ] Body-photo setup explains avatar processing, retention, replace, and delete controls
 - [ ] Notification permission request (iOS: asked at appropriate moment, not on first launch)
 - [ ] Internet connectivity: graceful offline handling (show cached data or "No connection" screen)
 - [ ] All API endpoints return proper errors, never crash the app
@@ -160,10 +161,12 @@ flutter build appbundle --release
    - Government apps: No
 
 6. **Data safety:**
-   - Data collected: Phone number (auth), Photos (wardrobe), Location (city for weather)
-   - Data shared: None
+   - Data collected: Phone number or email (auth), body and wardrobe photos, optional city for weather
+   - Photo purpose: body photos create the private 2.5D avatar base and try-on renders; wardrobe photos are background-removed and tagged
+   - Processing: disclose the configured AI subprocessors used for vision and try-on generation; do not mark photos as "not shared" if a provider processes them
    - Data encrypted in transit: Yes
-   - Data deletion: User can delete account (delete all data)
+   - Data deletion: users can delete/replace the body photo separately or delete the account; both source and derived avatar assets are removed
+   - Sensitive claims: do not claim a medical body scan, exact measurements, or true 3D reconstruction
 
 7. **Release:**
    - Create internal testing track first (invite 20 testers by email)

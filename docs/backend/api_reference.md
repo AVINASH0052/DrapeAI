@@ -28,6 +28,7 @@ All responses return JSON. Errors use this shape:
 Standard HTTP status codes:
 - `200` Success
 - `201` Created
+- `202` Accepted for background processing
 - `400` Bad request (validation error)
 - `401` Unauthorized (missing or invalid token)
 - `403` Forbidden (accessing another user's resource)
@@ -70,12 +71,16 @@ Verifies a Firebase JWT and provisions the user if first login. Called once on a
 **Response 200:**
 ```json
 {
-  "user_id": "uuid",
-  "is_new_user": true,
-  "plan": "free",
-  "quiz_completed": false
+  "user_id": "firebase-uid",
+  "display_name": "Avinash",
+  "onboarding_done": false,
+  "has_body_photo": true,
+  "avatar_status": "ready"
 }
 ```
+
+The mobile router uses `has_body_photo` and `avatar_status` for the body-first
+gate. Style preferences no longer block entry to the app.
 
 ---
 
@@ -91,24 +96,19 @@ Returns current user profile + preferences.
   "id": "uuid",
   "phone": "+91...",
   "email": null,
-  "name": "Avinash",
-  "avatar_url": null,
-  "plan": "free",
-  "preferences": {
-    "style_tags": ["minimalist", "ethnic"],
-    "occasions": ["casual", "work", "festive"],
-    "color_palette": ["earth_tones", "neutrals"],
-    "preferred_fit": "regular",
-    "city": "Bangalore",
-    "climate": "tropical",
-    "gender": "male",
-    "quiz_completed": true
+  "display_name": "Avinash",
+  "photo_url": null,
+  "try_on_photo_url": "/uploads/users/uid/try_on/photo.jpg",
+  "avatar_status": "ready",
+  "avatar_base_url": "/uploads/users/uid/avatar/base.png",
+  "avatar_profile": {
+    "pose": "front_or_three_quarter",
+    "visibility": "full_body",
+    "aspect_ratio": 0.6667,
+    "crop_bounds": {"left": 0.1, "top": 0.02, "right": 0.9, "bottom": 0.98}
   },
-  "stats": {
-    "total_items": 24,
-    "total_outfits_saved": 8,
-    "wardrobe_utilisation_pct": 67.5
-  }
+  "avatar_error": null,
+  "onboarding_done": false
 }
 ```
 
@@ -128,9 +128,86 @@ Update user profile fields.
 
 ---
 
-## Preferences (Onboarding Quiz)
+## Body-first avatar
 
-### PUT /preferences
+### POST /me/try-on-photo
+
+Uploads the private full-body source image used by try-on rendering. The API
+returns immediately after storage and schedules validation, person
+segmentation, and avatar-base preparation. Orientation is normalized and EXIF,
+including embedded GPS metadata, is removed before storage.
+
+**Request:** `multipart/form-data`
+- `image` (required): JPEG, PNG, or WebP.
+
+**Response 202:**
+```json
+{
+  "try_on_photo_url": "/uploads/users/uid/try_on/photo.jpg",
+  "uploaded": true,
+  "avatar_status": "queued"
+}
+```
+
+### GET /me/avatar-profile
+
+Poll until `status` is `ready` or `failed`.
+
+```json
+{
+  "status": "ready",
+  "avatar_base_url": "/uploads/users/uid/avatar/base.png",
+  "source_photo_url": "/uploads/users/uid/try_on/photo.jpg",
+  "profile": {
+    "pose": "front_or_three_quarter",
+    "visibility": "full_body",
+    "aspect_ratio": 0.6667,
+    "crop_bounds": {"left": 0.1, "top": 0.02, "right": 0.9, "bottom": 0.98}
+  },
+  "error": null,
+  "analyzed_at": "2026-07-18T18:30:00Z"
+}
+```
+
+The profile intentionally contains renderability metadata only. It does not
+infer weight, exact dimensions, or body measurements.
+
+### DELETE /me/try-on-photo
+
+Deletes both the source body photo and the derived avatar base. The user
+returns to Body Setup.
+
+### POST /avatar/render
+
+Creates a manual outfit from authenticated-user-owned wardrobe items and
+starts the existing asynchronous try-on pipeline.
+
+```json
+{
+  "slots": {
+    "tops": "item-uuid",
+    "bottoms": "item-uuid",
+    "footwear": "item-uuid"
+  }
+}
+```
+
+Accepted slots are `tops`, `bottoms`, `dresses`, `outerwear`, `footwear`,
+`accessories`, `caps`, and `glasses`. The API validates ownership,
+`processing_status=ready`, category compatibility, duplicate items, and dress
+conflicts. The response contains `outfit_id`, `job_id`, and `status`; completed
+sync fallbacks may also include `preview_url`.
+
+### GET /avatar/render/{outfit_id}/status
+
+Polls the render using the same job payload as outfit visualization. The
+completed response includes `preview_url`.
+
+---
+
+## Preferences (progressive personalization)
+
+### PUT /me/preferences
 
 Create or update the full preference profile. Called when onboarding quiz is completed.
 
@@ -158,7 +235,7 @@ Create or update the full preference profile. Called when onboarding quiz is com
 
 **Response 200:** Updated preferences object.
 
-### GET /preferences
+### GET /me/preferences
 
 Returns current preferences.
 
@@ -170,34 +247,33 @@ Returns current preferences.
 
 ### POST /items/upload
 
-Upload a clothing item photo. Backend removes background, tags with AI, generates embedding, stores in R2.
+Accept a clothing item after background removal. AI tagging and embedding run
+asynchronously (ARQ worker when Redis is available, otherwise FastAPI
+`BackgroundTasks`). The cleaned item appears in the closet with
+`processing_status` of `queued` / `processing` until tagging finishes.
 
 **Request:** `multipart/form-data`
 - `image` (required): JPEG, PNG, or WebP. Max 10 MB.
-- `category` (optional): Override AI-detected category.
-- `notes` (optional): User notes.
 
 **Response 201:**
 ```json
 {
   "id": "uuid",
-  "image_url": "https://images.drapeai.app/users/uid/items/iid.png",
-  "thumbnail_url": "https://images.drapeai.app/users/uid/items/iid_thumb.png",
+  "image_url": "/uploads/users/uid/items/iid.png",
+  "status": "processing",
+  "processing_status": "queued",
   "tags": {
     "category": "top",
-    "sub_category": "kurta",
-    "primary_color": "navy",
-    "secondary_colors": ["gold"],
-    "pattern": "embroidered",
-    "fabric": "cotton",
-    "style_tags": ["ethnic", "festive"],
-    "formality": 4,
-    "season_tags": ["all_season"],
-    "ethnic_flag": true
+    "sub_category": "processing",
+    "primary_color": "unknown",
+    "confidence": 0.0
   },
-  "confidence": 0.92
+  "confidence": 0.0
 }
 ```
+
+Poll `GET /items` — when analysis completes, `processing_status` becomes
+`ready` (or `failed` if tagging fails).
 
 **Errors:**
 - `400` Invalid image type / too large / corrupt
@@ -205,7 +281,8 @@ Upload a clothing item photo. Backend removes background, tags with AI, generate
 
 ### POST /items/upload/batch
 
-Upload multiple items at once. Each image processed sequentially server-side.
+Upload multiple items at once (max 10). Each photo is accepted immediately;
+AI analysis continues in the background.
 
 **Request:** `multipart/form-data`
 - `images` (required): Array of up to 10 image files.
@@ -604,31 +681,6 @@ Unregister device from push notifications.
 {
   "token": "fcm_device_token_string"
 }
-```
-
----
-
-## Demo Wardrobe
-
-### POST /demo/activate
-
-Load the demo wardrobe (20 pre-tagged items) into the user's account. Items are marked with `is_demo = true`.
-
-**Response 201:**
-```json
-{
-  "items_loaded": 20,
-  "message": "Demo wardrobe loaded. Try generating an outfit!"
-}
-```
-
-### DELETE /demo/clear
-
-Remove all demo items from the user's wardrobe.
-
-**Response 200:**
-```json
-{ "items_removed": 20 }
 ```
 
 ---

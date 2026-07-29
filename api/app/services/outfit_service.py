@@ -20,6 +20,36 @@ from app.utils.cost_tracker import check_budget
 logger = logging.getLogger(__name__)
 
 
+def _validate_outfit_base(items: list[dict]) -> None:
+    """Require a wearable base, not an arbitrary number of closet items."""
+    standalone_ethnic = {"saree", "lehenga", "sherwani", "anarkali"}
+    if any(item.get("category") == "dress" for item in items):
+        return
+    if any(
+        item.get("category") == "ethnic"
+        and item.get("sub_category") in standalone_ethnic
+        for item in items
+    ):
+        return
+
+    has_top = any(
+        item.get("category") in {"top", "ethnic"}
+        or item.get("sub_category") in {"kurta", "shirt", "t-shirt"}
+        for item in items
+    )
+    has_bottom = any(item.get("category") == "bottom" for item in items)
+    if not has_top:
+        raise HTTPException(
+            status_code=400,
+            detail="Add at least one top before generating an outfit.",
+        )
+    if not has_bottom:
+        raise HTTPException(
+            status_code=400,
+            detail="Add at least one bottom to pair with your tops.",
+        )
+
+
 async def generate_outfits(
     user_id: str, occasion: str, weather_override: dict | None = None
 ) -> dict:
@@ -47,13 +77,17 @@ async def generate_outfits(
         items, _ = await get_items(conn, user_id, limit=200)
         feedback = await get_recent_feedback(conn, user_id, limit=30)
 
-    if not prefs:
-        raise HTTPException(status_code=400, detail="Complete onboarding first")
+    items = [
+        item
+        for item in items
+        if item.get("processing_status", "ready") == "ready"
+    ]
 
-    if len(items) < 3:
-        raise HTTPException(
-            status_code=400, detail="Add at least 3 items to generate outfits"
-        )
+    # Generation still works with neutral defaults if preferences are missing.
+    # This avoids blocking users whose local onboarding state predates the API.
+    prefs = prefs or {}
+
+    _validate_outfit_base(items)
 
     # 3. Get weather
     weather = weather_override
@@ -109,10 +143,14 @@ async def shuffle_outfit(user_id: str, occasion: str) -> dict:
         prefs = await get_preferences(conn, user_id)
         items, _ = await get_items(conn, user_id, limit=200)
 
-    if not prefs or len(items) < 3:
-        raise HTTPException(
-            status_code=400, detail="Need preferences and at least 3 items"
-        )
+    items = [
+        item
+        for item in items
+        if item.get("processing_status", "ready") == "ready"
+    ]
+
+    prefs = prefs or {}
+    _validate_outfit_base(items)
 
     weather = await get_weather(prefs.get("location_city", "delhi"))
     candidates = generate_candidates(items, occasion, weather, max_candidates=10)

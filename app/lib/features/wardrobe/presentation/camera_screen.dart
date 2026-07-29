@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -12,10 +13,13 @@ import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/widgets/drape_ui.dart';
+import '../providers/wardrobe_provider.dart';
 import '../widgets/photo_guide_overlay.dart';
 
 class CameraScreen extends ConsumerStatefulWidget {
-  const CameraScreen({super.key});
+  const CameraScreen({this.returnRoute = '/wardrobe', super.key});
+
+  final String returnRoute;
 
   @override
   ConsumerState<CameraScreen> createState() => _CameraScreenState();
@@ -29,10 +33,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
   bool _showGuide = false;
 
   static const _tips = [
-    '🪟 lay flat, plain background',
-    '☀️ soft natural light hits different',
-    '📐 fill the frame, leave a margin',
-    '🚫 no hangers — just the piece',
+    'Lay flat on a plain background',
+    'Use soft natural light',
+    'Fill the frame, leave a margin',
+    'No hangers, just the piece',
   ];
 
   @override
@@ -78,7 +82,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         backgroundColor: AppColors.red,
         content: Text(
           isPermission
-              ? 'Enable Camera & Photos in Settings → DrapeAI'
+              ? 'Enable Camera & Photos in Settings → Sugatai'
               : 'Could not open ${source == ImageSource.camera ? "camera" : "gallery"}',
           style: const TextStyle(color: Colors.white),
         ),
@@ -105,13 +109,21 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     setState(() => _uploading = true);
     try {
       final api = ref.read(apiClientProvider);
-      final result = await api.uploadItem(path);
-      if (mounted) context.pushNamed('tag_review', extra: result);
+      await api.uploadItem(path);
+      ref.invalidate(wardrobeProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Added to closet. AI is tagging in the background.'),
+          backgroundColor: AppColors.ink,
+        ),
+      );
+      context.go(widget.returnRoute);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Upload failed: $e'),
+          const SnackBar(
+            content: Text('Upload failed. Please try again.'),
             backgroundColor: AppColors.red,
           ),
         );
@@ -176,11 +188,14 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
             ),
           ),
           const _DashedFrame(),
-          Center(
+          const Center(
             child: Opacity(
               opacity: 0.08,
-              child: Icon(Icons.checkroom_rounded,
-                  size: 120, color: Colors.white),
+              child: Icon(
+                Icons.checkroom_rounded,
+                size: 120,
+                color: Colors.white,
+              ),
             ),
           ),
           // Top bar
@@ -208,13 +223,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
           ),
           // Title
           Positioned(
-            top: MediaQuery.of(context).padding.top + 64,
+            top: MediaQuery.paddingOf(context).top + 72,
             left: 0,
             right: 0,
             child: Column(
               children: [
                 Text(
-                  'add to closet',
+                  'Add to closet',
                   style: GoogleFonts.syne(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
@@ -223,7 +238,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'AI tags it in seconds',
+                  'Choose one clear photo of the clothing piece',
                   style: AppTypography.caption.copyWith(color: Colors.white60),
                 ),
               ],
@@ -271,11 +286,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                 _GlassCircleBtn(
                   icon: Icons.photo_library_rounded,
                   size: 52,
-                  onTap: _uploading ? null : () => _pickImage(ImageSource.gallery),
+                  onTap:
+                      _uploading ? null : () => _pickImage(ImageSource.gallery),
                 ),
                 const SizedBox(width: 32),
                 GestureDetector(
-                  onTap: _uploading ? null : () => _pickImage(ImageSource.camera),
+                  onTap:
+                      _uploading ? null : () => _pickImage(ImageSource.camera),
                   child: Container(
                     width: 76,
                     height: 76,
@@ -344,7 +361,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'cooking your fit…',
+                    'Preparing your piece',
                     style: GoogleFonts.syne(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -353,8 +370,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'removing bg + AI tagging',
-                    style: AppTypography.caption.copyWith(color: Colors.white60),
+                    'Removing the background before saving',
+                    style:
+                        AppTypography.caption.copyWith(color: Colors.white60),
                   ),
                 ],
               ),
@@ -409,7 +427,7 @@ class _DashedFrame extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.fromLTRB(
           36,
-          MediaQuery.of(context).padding.top + 100,
+          MediaQuery.paddingOf(context).top + 140,
           36,
           200,
         ),
@@ -489,6 +507,16 @@ class _PhotoPreviewSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.file(
+              File(imagePath),
+              height: 280,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(height: 20),
           Row(
             children: [
               Container(
@@ -506,7 +534,7 @@ class _PhotoPreviewSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'looks fire 🔥',
+                      'Ready to add?',
                       style: GoogleFonts.syne(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -514,9 +542,9 @@ class _PhotoPreviewSheet extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'sharp, lit, clean background',
-                      style: AppTypography.caption
-                          .copyWith(color: Colors.white60),
+                      'We will remove the background before saving.',
+                      style:
+                          AppTypography.caption.copyWith(color: Colors.white60),
                     ),
                   ],
                 ),

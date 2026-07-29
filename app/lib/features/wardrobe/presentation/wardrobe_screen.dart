@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,7 +8,6 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/network/api_client.dart';
 import '../../../core/widgets/drape_ui.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../providers/wardrobe_provider.dart';
@@ -22,13 +23,46 @@ class WardrobeScreen extends ConsumerStatefulWidget {
 
 class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
   bool _gratificationHandled = false;
+  Timer? _pollTimer;
 
   static const _categories = <String?>[
-    null, 'top', 'bottom', 'dress', 'outer', 'ethnic', 'footwear', 'accessory'
+    null,
+    'top',
+    'bottom',
+    'dress',
+    'outer',
+    'ethnic',
+    'footwear',
+    'accessory'
   ];
   static const _labels = [
-    'All', 'Tops', 'Bottoms', 'Dresses', 'Outer', 'Ethnic', 'Kicks', 'Extras'
+    'All',
+    'Tops',
+    'Bottoms',
+    'Dresses',
+    'Outer',
+    'Ethnic',
+    'Kicks',
+    'Extras'
   ];
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _syncProcessingPoll(bool needsPoll) {
+    if (needsPoll) {
+      _pollTimer ??= Timer.periodic(const Duration(seconds: 3), (_) {
+        if (!mounted) return;
+        ref.invalidate(wardrobeProvider);
+      });
+    } else {
+      _pollTimer?.cancel();
+      _pollTimer = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +78,13 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
         if (mounted) GratificationDialog.present(context);
       });
     }
+
+    items.whenData((list) {
+      final needsPoll = list.any((item) => item.isProcessing);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncProcessingPoll(needsPoll);
+      });
+    });
 
     return Scaffold(
       extendBody: true,
@@ -83,8 +124,9 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                   itemBuilder: (_, i) => DrapeChip(
                     label: _labels[i],
                     active: activeCategory == _categories[i],
-                    onTap: () => ref.read(wardrobeCategoryFilter.notifier).state =
-                        _categories[i],
+                    onTap: () => ref
+                        .read(wardrobeCategoryFilter.notifier)
+                        .state = _categories[i],
                   ),
                 ),
               ),
@@ -122,13 +164,22 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('😵', style: TextStyle(fontSize: 32)),
+                          const Icon(
+                            Icons.cloud_off_rounded,
+                            size: 36,
+                            color: AppColors.orange,
+                          ),
                           const SizedBox(height: 12),
-                          Text('closet didn\'t load',
-                              style: AppTypography.title),
+                          Text(
+                            'closet didn\'t load',
+                            style: AppTypography.title,
+                          ),
                           const SizedBox(height: 8),
-                          Text('check connection & retry',
-                              style: AppTypography.body),
+                          Text(
+                            'check connection & retry',
+                            style: AppTypography.body,
+                            textAlign: TextAlign.center,
+                          ),
                           const SizedBox(height: 16),
                           DrapeGradientButton(
                             label: 'Try again',
@@ -221,7 +272,11 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('👗', style: TextStyle(fontSize: 48)),
+              const Icon(
+                Icons.checkroom_rounded,
+                size: 48,
+                color: AppColors.orange,
+              ),
               const SizedBox(height: 16),
               Text(
                 'empty closet energy',
@@ -240,40 +295,11 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                 icon: Icons.camera_alt_rounded,
                 onPressed: () => context.pushNamed('camera'),
               ),
-              const SizedBox(height: 10),
-              DrapeGradientButton(
-                label: 'Try demo wardrobe',
-                onPressed: () => _activateDemo(context),
-              ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  Future<void> _activateDemo(BuildContext context) async {
-    try {
-      final result = await ref.read(apiClientProvider).activateDemoWardrobe();
-      ref.invalidate(wardrobeProvider);
-      if (!context.mounted) return;
-      final added = result['items_added'] as int? ?? 0;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            added > 0
-                ? 'Demo wardrobe loaded — $added pieces'
-                : 'Demo wardrobe ready',
-          ),
-          backgroundColor: AppColors.lime,
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Demo load failed: $e')),
-      );
-    }
   }
 }
 

@@ -113,6 +113,68 @@ async def test_refund_swallows_redis_errors():
 
 
 @pytest.mark.asyncio
+async def test_mark_completed_does_not_overwrite_already_failed_job(client, clean_db):
+    """Regression test for a real race found in live testing: a job stuck
+    processing far longer than expected got marked 'failed' (and refunded)
+    by a stale-job check while the worker was genuinely still running it.
+    When the worker's real result arrived ~30 min later, mark_completed
+    must NOT silently flip status back to 'completed' — the client already
+    saw 'failed' and may have retried; flip-flopping the same row is worse
+    than leaving it as the first terminal state that was reported."""
+    from app.database.pool import get_pool
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO try_on_jobs (user_id, outfit_id, status)
+            VALUES ('test-user-001', NULL, 'processing')
+            RETURNING id
+            """,
+        )
+        job_id = str(row["id"])
+
+        # Simulate the stale-job check firing first.
+        won_fail = await try_on_job.mark_failed(conn, job_id, "Timed out waiting for worker")
+        assert won_fail is True
+
+        # The worker's real completion arrives late.
+        won_complete = await try_on_job.mark_completed(
+            conn,
+            job_id,
+            result_key="users/test-user-001/outfits/x/preview.png",
+            method="ai:gemini",
+            provider="gemini",
+            model="gemini-2.5-flash-image",
+        )
+        assert won_complete is False
+
+        final = await conn.fetchrow("SELECT status, error_message, result_key FROM try_on_jobs WHERE id = $1", job_id)
+    assert final["status"] == "failed"
+    assert final["error_message"] == "Timed out waiting for worker"
+    assert final["result_key"] is None
+
+
+@pytest.mark.asyncio
+async def test_mark_completed_wins_when_job_still_processing(client, clean_db):
+    """Normal path: nothing else touched the job, so completion succeeds."""
+    from app.database.pool import get_pool
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "INSERT INTO try_on_jobs (user_id, outfit_id, status) VALUES ('test-user-001', NULL, 'processing') RETURNING id",
+        )
+        job_id = str(row["id"])
+        won = await try_on_job.mark_completed(
+            conn, job_id, result_key="k", method="ai:gemini", provider="gemini", model="m"
+        )
+        assert won is True
+        final = await conn.fetchrow("SELECT status FROM try_on_jobs WHERE id = $1", job_id)
+    assert final["status"] == "completed"
+
+
+@pytest.mark.asyncio
 async def test_increment_uses_utc_date_key():
     fake = FakeRedis()
     with patch("app.services.redis_client.get_redis", new=AsyncMock(return_value=fake)):

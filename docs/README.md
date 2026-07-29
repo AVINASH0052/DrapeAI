@@ -1,52 +1,87 @@
-# DrapeAI -- Documentation Index
+# DrapeAI documentation handbook
 
-> AI Outfit Assistant. Built for India. Flutter + FastAPI + GPT-4o Vision.
+Everything you need to **build, run, integrate, deploy, and operate** DrapeAI.  
+Deep dives also live under `docs/backend/`, `docs/frontend/`, and each package README.
 
-All project documentation lives in this folder. Read these docs before writing any code. The master plan is at [PLAN.md](../PLAN.md).
-
----
-
-## Backend (`backend/`)
-
-Everything needed to build the FastAPI + PostgreSQL + AI backend.
-
-| Document | What It Covers |
-|---|---|
-| [README](backend/README.md) | Backend build order (13 phases), quick reference commands |
-| [Implementation Guide](backend/implementation_guide.md) | Step-by-step code for every module: scaffold, auth, items, AI pipeline, outfits, lookbooks, push, testing |
-| [Coding Standards](backend/coding_standards.md) | 12 Python/FastAPI rules: security, async, error handling, naming, testing, git |
-| [Database Schema](backend/database_schema.md) | 13 PostgreSQL tables with DDL, indexes, migrations, useful queries |
-| [API Reference](backend/api_reference.md) | Every endpoint: request/response, rate limits, error codes |
-| [AI Pipeline](backend/ai_pipeline.md) | Upload pipeline, outfit pipeline, rule engine, LLM ranker, cost control, prompts |
-
-## Frontend (`frontend/`)
-
-Everything needed to build the Flutter mobile app.
-
-| Document | What It Covers |
-|---|---|
-| [README](frontend/README.md) | Frontend build order (13 phases), design system tokens, quick reference commands |
-| [Implementation Guide](frontend/implementation_guide.md) | Step-by-step code for every screen: scaffold, auth, onboarding, camera, wardrobe grid, outfits, shuffle, lookbooks, profile, polish |
-| [Coding Standards](frontend/coding_standards.md) | 15 Dart/Flutter rules: theme, Riverpod, GoRouter, Dio, naming, testing, git |
-| [UI/UX Specification](frontend/ui_ux_spec.md) | Design system, typography, spacing, component library, 12 screen specs, animations |
-
-## Shared
-
-| Document | What It Covers |
-|---|---|
-| [Architecture](architecture.md) | System topology, service boundaries, data flows, auth, caching, scaling path |
-| [Deployment](deployment.md) | Hetzner setup, Docker Compose, Nginx + TLS, R2, Firebase, CI/CD, backups, monitoring |
-| [Store Submission](store_submission.md) | Play Store + App Store: signing, building, screenshots, listing copy, review guidelines |
-| [Project Structure](project_structure.md) | Exact folder layout for app/ + api/ + infra/, every file explained |
-| [Environment Setup](environment_setup.md) | Dev machine setup: Flutter, Xcode, Android SDK, Python, PostgreSQL, VS Code config |
+**Last updated:** 2026-07-14
 
 ---
 
-## Quick Links
+## I am new — start here
 
-- **Start here:** [Master Plan](../PLAN.md)
-- **Build backend:** [Backend Implementation Guide](backend/implementation_guide.md)
-- **Build frontend:** [Frontend Implementation Guide](frontend/implementation_guide.md)
-- **Run locally:** [Environment Setup](environment_setup.md)
-- **Deploy to production:** [Deployment](deployment.md)
-- **Submit to stores:** [Store Submission](store_submission.md)
+1. [GLOSSARY.md](GLOSSARY.md) — terms  
+2. [architecture/OVERVIEW.md](architecture/OVERVIEW.md) — system map  
+   - [architecture/DECISIONS.md](architecture/DECISIONS.md) — *why* the stack  
+   - [architecture.md](architecture.md) — full topology / data flows  
+3. [local-development/README.md](local-development/README.md) — run locally  
+4. [services/README.md](services/README.md) — what each package does  
+5. [rules/AGENTS.md](rules/AGENTS.md) — invariants (read before coding)  
+6. [contributing/README.md](contributing/README.md) — PR / review norms  
+
+## By job
+
+| Job | Go to |
+|---|---|
+| Local setup | [local-development/](local-development/) · [environment_setup.md](environment_setup.md) |
+| Deploy / CI | [DEPLOYMENT.md](DEPLOYMENT.md) · [deployment.md](deployment.md) |
+| Session lessons / past fixes | [ops/SESSION-LESSONS.md](ops/SESSION-LESSONS.md) |
+| Fix production issue | [ops/TROUBLESHOOTING.md](ops/TROUBLESHOOTING.md) |
+| Add API / UI / migration / test | [instructions/](instructions/) · [rules/CODING-STANDARDS.md](rules/CODING-STANDARDS.md) |
+| Coding rules (must follow) | [rules/CODING-STANDARDS.md](rules/CODING-STANDARDS.md) · [rules/AGENTS.md](rules/AGENTS.md) · [instructions/FOLLOW-THESE.md](instructions/FOLLOW-THESE.md) |
+| Firebase / R2 / RunPod / LLM providers | [integrations/](integrations/) |
+| Backend deep dive | [backend/](backend/) |
+| Flutter deep dive | [frontend/](frontend/) |
+| Try-on / IDM-VTON worker | [services/TRYON-WORKER.md](services/TRYON-WORKER.md) · [infra/runpod/idm-vton-worker/README.md](../infra/runpod/idm-vton-worker/README.md) |
+| Store submission | [store_submission.md](store_submission.md) |
+| Folder layout | [project_structure.md](project_structure.md) |
+
+---
+
+## Folder map
+
+```
+docs/
+├── README.md                    ← this handbook index
+├── GLOSSARY.md
+├── DEPLOYMENT.md                ← short CI/CD cheat sheet
+├── architecture/                ← overview + decisions
+├── architecture.md              ← detailed topology (legacy deep dive)
+├── local-development/           ← run apps, env
+├── services/                    ← api, app, admin, try-on worker
+├── integrations/                ← Firebase, R2, RunPod, AI providers
+├── ops/                         ← troubleshooting, session lessons
+├── contributing/                ← git + PR norms
+├── rules/                       ← AGENTS, coding standards
+├── instructions/                ← AI task profiles
+├── backend/                     ← FastAPI implementation guides
+├── frontend/                    ← Flutter implementation guides
+├── project_structure.md
+├── environment_setup.md
+├── deployment.md                ← long-form deploy guide
+└── store_submission.md
+```
+
+---
+
+## Packages (source of truth for code)
+
+| Package | Docs |
+|---|---|
+| `api/` | [backend/](backend/) · [services/BACKEND.md](services/BACKEND.md) |
+| `app/` | [frontend/](frontend/) · [services/FRONTEND.md](services/FRONTEND.md) · `app/README.md` |
+| `admin/` | [services/ADMIN.md](services/ADMIN.md) |
+| `infra/` | [deployment.md](deployment.md) · Compose / Nginx / Redis |
+| `infra/runpod/idm-vton-worker/` | package README · [services/TRYON-WORKER.md](services/TRYON-WORKER.md) |
+
+---
+
+## Non-negotiables (short)
+
+1. **User ownership** — every user-scoped query filters by authenticated `user_id`  
+2. **No live secrets in git** — `.env` stays local; use `.env.example`  
+3. **Parameterized SQL only** — never string-concat SQL  
+4. **Async I/O on the API** — no blocking calls on the event loop  
+5. **Light theme / no emoji in product UI or logs**  
+6. **IDM-VTON is non-commercial** (CC BY-NC-SA 4.0) until licensing changes  
+
+Full list: [rules/AGENTS.md](rules/AGENTS.md).

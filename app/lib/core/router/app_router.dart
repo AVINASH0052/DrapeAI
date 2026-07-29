@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/presentation/auth_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/avatar/presentation/avatar_studio_screen.dart';
+import '../../features/avatar/presentation/body_setup_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/wardrobe/presentation/wardrobe_screen.dart';
 import '../../features/wardrobe/presentation/item_detail_screen.dart';
@@ -20,6 +22,9 @@ import '../../features/profile/presentation/legal_screens.dart';
 import '../../features/calendar/presentation/calendar_screen.dart';
 import '../../features/analytics/presentation/analytics_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
+import '../../features/try_on/presentation/fitting_room_screen.dart';
+import '../../features/try_on/presentation/try_on_home_screen.dart';
+import '../../features/try_on/presentation/try_on_history_screen.dart';
 import '../shell/main_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -34,8 +39,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authStatus = ref.read(authStatusProvider);
       final isLoggedIn = authStatus == AuthStatus.authenticated;
       final isOnboarding = authStatus == AuthStatus.onboardingNeeded;
+      final needsBody = authStatus == AuthStatus.bodySetupNeeded;
       final isOnLoginPage = state.matchedLocation == '/login';
       final isOnOnboarding = state.matchedLocation == '/onboarding';
+      final isOnBodySetup = state.matchedLocation == '/body-setup';
 
       if (authStatus == AuthStatus.loading ||
           authStatus == AuthStatus.initial) {
@@ -47,11 +54,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       if (isOnboarding) {
-        return isOnOnboarding ? null : '/onboarding';
+        return isOnBodySetup ? null : '/body-setup';
+      }
+
+      if (needsBody) {
+        return isOnBodySetup ? null : '/body-setup';
       }
 
       if (isLoggedIn && (isOnLoginPage || isOnOnboarding)) {
-        return '/wardrobe';
+        return '/studio';
       }
 
       return null;
@@ -67,9 +78,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'onboarding',
         builder: (_, __) => const OnboardingScreen(),
       ),
+      GoRoute(
+        path: '/body-setup',
+        name: 'body_setup',
+        builder: (_, __) => const BodySetupScreen(),
+      ),
       ShellRoute(
         builder: (_, __, child) => MainShell(child: child),
         routes: [
+          GoRoute(
+            path: '/studio',
+            name: 'avatar_studio',
+            builder: (_, __) => const AvatarStudioScreen(),
+          ),
           GoRoute(
             path: '/wardrobe',
             name: 'wardrobe',
@@ -113,6 +134,23 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, __) => const ProfileScreen(),
           ),
           GoRoute(
+            path: '/fitting-room',
+            name: 'fitting_room',
+            builder: (_, __) => const FittingRoomScreen(),
+            routes: [
+              GoRoute(
+                path: 'shop',
+                name: 'fitting_room_shop',
+                builder: (_, __) => const TryOnHomeScreen(),
+              ),
+              GoRoute(
+                path: 'history',
+                name: 'fitting_room_history',
+                builder: (_, __) => const TryOnHistoryScreen(),
+              ),
+            ],
+          ),
+          GoRoute(
             path: '/calendar',
             name: 'calendar',
             builder: (_, __) => const CalendarScreen(),
@@ -127,7 +165,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/camera',
         name: 'camera',
-        builder: (_, __) => const CameraScreen(),
+        builder: (_, state) => CameraScreen(
+          returnRoute: state.uri.queryParameters['returnTo'] == 'studio'
+              ? '/studio'
+              : '/wardrobe',
+        ),
       ),
       GoRoute(
         path: '/tag-review',
@@ -160,6 +202,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/notifications',
         name: 'notifications',
         builder: (_, __) => const NotificationsScreen(),
+      ),
+      // Legacy deep links → Fitting Room shop flow
+      GoRoute(
+        path: '/try-on',
+        redirect: (_, __) => '/fitting-room/shop',
+      ),
+      GoRoute(
+        path: '/try-on/history',
+        redirect: (_, __) => '/fitting-room/history',
       ),
     ],
   );

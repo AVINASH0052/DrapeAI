@@ -7,10 +7,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/drape_ui.dart';
 import '../../profile/providers/user_profile_provider.dart';
+import '../../try_on/services/try_on_photo_actions.dart';
 
-/// Dismissible banner nudging the user to add a full-body photo so
-/// outfits can be visualized on them. Hidden once a photo exists or
-/// after the user dismisses it.
+/// Dismissible banner nudging the user into the Fitting Room.
 class TryOnPhotoNudge extends ConsumerStatefulWidget {
   const TryOnPhotoNudge({super.key});
 
@@ -46,6 +45,13 @@ class _TryOnPhotoNudgeState extends ConsumerState<TryOnPhotoNudge> {
     await prefs.setBool(TryOnPhotoNudge._prefsKey, true);
   }
 
+  Future<void> _addPhoto() async {
+    final ok = await uploadTryOnPhotoInPlace(ref, context);
+    if (ok && mounted) {
+      setState(() => _dismissed = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_dismissed != false) return const SizedBox.shrink();
@@ -78,15 +84,14 @@ class _TryOnPhotoNudgeState extends ConsumerState<TryOnPhotoNudge> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Add one full-body photo for AI previews of every fit.',
+                    'Add one photo in Fitting Room, then try any look.',
                     style: AppTypography.caption,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
             TextButton(
-              onPressed: () => context.push('/profile'),
+              onPressed: _addPhoto,
               child: Text(
                 'Add',
                 style: AppTypography.title.copyWith(
@@ -94,6 +99,12 @@ class _TryOnPhotoNudgeState extends ConsumerState<TryOnPhotoNudge> {
                   color: AppColors.orange,
                 ),
               ),
+            ),
+            IconButton(
+              tooltip: 'Fitting Room',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => context.go('/fitting-room'),
+              icon: const Icon(Icons.loyalty_outlined, size: 18),
             ),
             IconButton(
               visualDensity: VisualDensity.compact,

@@ -22,7 +22,7 @@ final dioProvider = Provider<Dio>((ref) {
       if (user != null) {
         final token = await user.getIdToken();
         options.headers['Authorization'] = 'Bearer $token';
-      } else {
+      } else if (Environment.enableDevTestFlow) {
         options.headers['Authorization'] = 'Bearer test-token';
       }
       handler.next(options);

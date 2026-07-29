@@ -20,31 +20,46 @@ router = APIRouter(prefix="/items", tags=["Items"])
 
 @router.post("/upload", status_code=201)
 async def upload_item(
+    background_tasks: BackgroundTasks,
     image: UploadFile = File(...),
     user: User = Depends(get_current_user),
 ):
-    """Upload a clothing item. Backend: remove background, tag with GPT-4o, store."""
+    """Accept a clothing photo immediately; AI tagging runs in the background."""
     file_bytes = await image.read()
     validate_image(image.content_type, file_bytes)
 
-    from app.services.upload_pipeline import process_upload
+    from app.services.upload_pipeline import (
+        accept_upload,
+        enqueue_upload_job,
+        run_upload_pipeline_standalone,
+    )
 
-    result = await process_upload(user.id, file_bytes, image.content_type)
+    result = await accept_upload(user.id, file_bytes, image.content_type)
+    enqueued = await enqueue_upload_job(result["id"], user.id)
+    if not enqueued:
+        background_tasks.add_task(
+            run_upload_pipeline_standalone, result["id"], user.id
+        )
     return result
 
 
 @router.post("/upload/batch", status_code=201)
 async def upload_items_batch(
+    background_tasks: BackgroundTasks,
     images: list[UploadFile] = File(...),
     user: User = Depends(get_current_user),
 ):
-    """Upload multiple clothing items in one request (max 10)."""
+    """Upload multiple clothing items (max 10). Analysis runs in the background."""
     if not images:
         raise HTTPException(status_code=400, detail="No images provided")
     if len(images) > 10:
         raise HTTPException(status_code=400, detail="Maximum 10 images per batch")
 
-    from app.services.upload_pipeline import process_upload
+    from app.services.upload_pipeline import (
+        accept_upload,
+        enqueue_upload_job,
+        run_upload_pipeline_standalone,
+    )
 
     results = []
     errors = []
@@ -52,7 +67,12 @@ async def upload_items_batch(
         try:
             file_bytes = await image.read()
             validate_image(image.content_type, file_bytes)
-            result = await process_upload(user.id, file_bytes, image.content_type)
+            result = await accept_upload(user.id, file_bytes, image.content_type)
+            enqueued = await enqueue_upload_job(result["id"], user.id)
+            if not enqueued:
+                background_tasks.add_task(
+                    run_upload_pipeline_standalone, result["id"], user.id
+                )
             results.append(result)
         except HTTPException as e:
             errors.append({"index": i, "detail": e.detail})

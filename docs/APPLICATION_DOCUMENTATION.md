@@ -55,7 +55,7 @@ The system mixes rule-based outfit composition (color harmony, formality match) 
 |---|---|---|
 | `users` | Auth identity from Firebase | `id`, `phone`, `email`, `display_name`, `photo_url`, `onboarding_done`, `last_login_at`, `created_at` |
 | `preferences` | Comprehensive style profile (1-to-1 with users) | `user_id`, `name`, `age`, `gender`, `style_goals` (JSON), `color_preferences` (JSON), `location_city`, `climate`, `body_type`, `skin_undertone`, `height_cm`, `budget_tier`, `lifestyle` (JSON), `occasions` (JSON), `fit_preference`, `style_profile` |
-| `items` | Wardrobe items (clothing pieces) | `user_id`, `image_url`, `thumbnail_url`, `category`, `sub_category`, `primary_color`, `secondary_colors`, `pattern`, `fabric`, `style_tags`, `formality` (1-5), `season_tags`, `ethnic_flag`, `confidence`, `embedding` (vector 1536), `brand`, `purchase_price`, `purchase_date`, `wear_count`, `last_worn_at`, `is_active`, `is_demo` |
+| `items` | Wardrobe items (clothing pieces) | `user_id`, `image_url`, `thumbnail_url`, `category`, `sub_category`, `display_name`, `notes`, `primary_color`, `secondary_colors`, `pattern`, `fabric`, `style_tags`, `formality` (1-5), `season_tags`, `ethnic_flag`, `confidence`, `processing_status`, `embedding` (vector 1024), `brand`, `purchase_price`, `purchase_date`, `wear_count`, `last_worn_at`, `is_active`, `is_demo` |
 | `outfits` | AI-generated outfit recommendations | `user_id`, `item_ids` (JSON), `occasion`, `weather_temp`, `weather_cond`, `generated_by` (`ai`/`shuffle`/`manual`), `rule_score`, `llm_rank`, `llm_reason`, `is_saved`, `is_worn` |
 | `outfit_feedback` | RLHF signal — likes/dislikes/saves/wears/skips | `user_id`, `outfit_id`, `action` |
 | `lookbooks` | Named outfit collections | `user_id`, `name`, `sort_order` |

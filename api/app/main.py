@@ -11,8 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database.pool import init_pool, close_pool
 from app.services.redis_client import init_redis, close_redis
-from app.routes import health, auth, user, items, outfits, lookbooks, demo, push, wardrobe, admin, stats, weather_route, notifications, calendar, analytics
-from app.services.demo_wardrobe import seed_demo_wardrobe
+from app.routes import admin, analytics, auth, avatar, calendar, health, items, lookbooks, notifications, outfits, push, stats, try_on, user, wardrobe, weather_route
 
 logging.basicConfig(
     level=settings.log_level,
@@ -32,20 +31,6 @@ async def lifespan(app: FastAPI):
         await init_redis()
     except Exception as e:
         logger.warning(f"Redis unavailable — falling back to in-memory rate limiting: {e}")
-    # Seed demo wardrobe (idempotent — skips if already seeded)
-    try:
-        from app.database.pool import get_pool
-        pool = await get_pool()
-        # Ensure the demo user exists
-        async with pool.acquire() as conn:
-            await conn.execute(
-                """INSERT INTO users (id, display_name, onboarding_done)
-                   VALUES ('demo-user', 'Demo User', TRUE)
-                   ON CONFLICT (id) DO NOTHING""",
-            )
-        await seed_demo_wardrobe()
-    except Exception as e:
-        logger.warning(f"Demo wardrobe seeding skipped: {e}")
     logger.info("DrapeAI backend started")
     yield
     from app.services.ai_provider import close_http_client
@@ -96,10 +81,10 @@ if settings.environment == "development":
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(user.router)
+app.include_router(avatar.router)
 app.include_router(items.router)
 app.include_router(outfits.router)
 app.include_router(lookbooks.router)
-app.include_router(demo.router)
 app.include_router(push.router)
 app.include_router(wardrobe.router)
 app.include_router(admin.router)
@@ -108,3 +93,4 @@ app.include_router(weather_route.router)
 app.include_router(notifications.router)
 app.include_router(calendar.router)
 app.include_router(analytics.router)
+app.include_router(try_on.router)

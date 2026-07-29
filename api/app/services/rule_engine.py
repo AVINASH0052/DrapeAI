@@ -123,6 +123,7 @@ def build_candidates(
     outerwear = groups.get("outerwear", [])
     accessories = groups.get("accessory", [])
     ethnic = groups.get("ethnic", [])
+    dresses = groups.get("dress", [])
 
     # Standard combos: top + bottom + footwear
     if tops and bottoms:
@@ -140,6 +141,13 @@ def build_candidates(
             if footwear:
                 combo.append(random.choice(footwear))
             candidates.append(combo)
+
+    # Dresses and jumpsuits are valid standalone outfit bases.
+    for dress in dresses:
+        combo = [dress]
+        if footwear:
+            combo.append(random.choice(footwear))
+        candidates.append(combo)
 
     # Ethnic fusion: ethnic top + western bottom
     ethnic_tops = [

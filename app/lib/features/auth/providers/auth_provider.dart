@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/constants/environment.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/dio_provider.dart';
 import '../data/auth_repository.dart';
@@ -12,7 +13,8 @@ enum AuthStatus {
   loading,
   authenticated,
   unauthenticated,
-  onboardingNeeded
+  onboardingNeeded,
+  bodySetupNeeded,
 }
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -49,17 +51,17 @@ class AuthStatusNotifier extends StateNotifier<AuthStatus> {
     try {
       final repo = _ref.read(authRepositoryProvider);
       final data = await repo.verifyWithBackend();
-      if (data['onboarding_done'] == true) {
+      if (data['has_body_photo'] == true && data['avatar_status'] == 'ready') {
         state = AuthStatus.authenticated;
       } else {
-        state = AuthStatus.onboardingNeeded;
+        state = AuthStatus.bodySetupNeeded;
       }
     } catch (_) {
       // If backend is unreachable but Firebase user exists, default to
-      // onboardingNeeded so the user isn't kicked back to the login screen.
+      // body setup so the user isn't kicked back to the login screen.
       final repo = _ref.read(authRepositoryProvider);
       if (repo.currentUser != null) {
-        state = AuthStatus.onboardingNeeded;
+        state = AuthStatus.bodySetupNeeded;
       } else {
         state = AuthStatus.unauthenticated;
       }
@@ -113,12 +115,25 @@ class AuthStatusNotifier extends StateNotifier<AuthStatus> {
     return null;
   }
 
-  void devBypass() {
-    state = AuthStatus.onboardingNeeded;
+  Future<void> devBypass() async {
+    if (!Environment.enableDevTestFlow) return;
+    state = AuthStatus.loading;
+    try {
+      final data = await _ref.read(apiClientProvider).verifyAuth();
+      state = data['has_body_photo'] == true && data['avatar_status'] == 'ready'
+          ? AuthStatus.authenticated
+          : AuthStatus.bodySetupNeeded;
+    } catch (_) {
+      state = AuthStatus.bodySetupNeeded;
+    }
   }
 
   void setAuthenticated() {
     state = AuthStatus.authenticated;
+  }
+
+  void requireBodySetup() {
+    state = AuthStatus.bodySetupNeeded;
   }
 
   void logout() {

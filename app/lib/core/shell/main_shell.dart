@@ -15,7 +15,7 @@ class MainShell extends StatelessWidget {
     final path = GoRouterState.of(context).uri.path;
     if (path.startsWith('/wardrobe')) return 0;
     if (path.startsWith('/today') || path.startsWith('/shuffle')) return 1;
-    if (path.startsWith('/lookbooks')) return 2;
+    if (path.startsWith('/studio')) return 2;
     if (path.startsWith('/profile')) return 3;
     return 0;
   }
@@ -29,7 +29,12 @@ class MainShell extends StatelessWidget {
       extendBody: true,
       body: child,
       bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          12 + MediaQuery.paddingOf(context).bottom,
+        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(28),
           child: BackdropFilter(
@@ -53,7 +58,7 @@ class MainShell extends StatelessWidget {
               ),
               child: Row(
                 children: List.generate(_items.length, (i) {
-                  final (icon, activeIcon, label, emoji) = _items[i];
+                  final (icon, activeIcon, label) = _items[i];
                   final isActive = i == currentIndex;
                   return Expanded(
                     child: GestureDetector(
@@ -81,19 +86,21 @@ class MainShell extends StatelessWidget {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              emoji,
-                              style: TextStyle(
-                                fontSize: isActive ? 18 : 16,
-                              ),
+                            Icon(
+                              isActive ? activeIcon : icon,
+                              size: isActive ? 20 : 18,
+                              color: isActive
+                                  ? Colors.white
+                                  : AppColors.textMuted(context),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               label,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10,
-                                fontWeight:
-                                    isActive ? FontWeight.w800 : FontWeight.w600,
+                                fontWeight: isActive
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
                                 color: isActive
                                     ? Colors.white
                                     : AppColors.textMuted(context),
@@ -120,16 +127,16 @@ class MainShell extends StatelessWidget {
       case 1:
         context.go('/today');
       case 2:
-        context.go('/lookbooks');
+        context.go('/studio');
       case 3:
         context.go('/profile');
     }
   }
 
   static const _items = [
-    (Icons.checkroom_outlined, Icons.checkroom, 'Closet', '👗'),
-    (Icons.auto_awesome_outlined, Icons.auto_awesome, 'Fit', '✨'),
-    (Icons.collections_bookmark_outlined, Icons.collections_bookmark, 'Mood', '📌'),
-    (Icons.person_outline_rounded, Icons.person_rounded, 'You', '🫶'),
+    (Icons.checkroom_outlined, Icons.checkroom, 'Closet'),
+    (Icons.auto_awesome_outlined, Icons.auto_awesome, 'Fit'),
+    (Icons.accessibility_new_outlined, Icons.accessibility_new, 'Studio'),
+    (Icons.person_outline_rounded, Icons.person_rounded, 'You'),
   ];
 }

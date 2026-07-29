@@ -1,6 +1,27 @@
 """Tests for outfit generation and feedback endpoints."""
 
 import pytest
+from fastapi import HTTPException
+
+from app.services.outfit_service import _validate_outfit_base
+
+
+def test_outfit_base_accepts_top_and_bottom():
+    _validate_outfit_base([
+        {"category": "top", "sub_category": "shirt"},
+        {"category": "bottom", "sub_category": "trousers"},
+    ])
+
+
+def test_outfit_base_explains_missing_bottom():
+    with pytest.raises(HTTPException) as exc:
+        _validate_outfit_base([
+            {"category": "top", "sub_category": "shirt"},
+            {"category": "top", "sub_category": "t-shirt"},
+        ])
+
+    assert exc.value.status_code == 400
+    assert "bottom" in exc.value.detail.lower()
 
 
 @pytest.mark.asyncio

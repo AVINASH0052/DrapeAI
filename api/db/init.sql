@@ -15,6 +15,12 @@ CREATE TABLE IF NOT EXISTS users (
     display_name    TEXT,
     photo_url       TEXT,
     try_on_photo_key TEXT,                    -- full-body photo for outfit visualization
+    avatar_status   TEXT NOT NULL DEFAULT 'missing'
+        CHECK (avatar_status IN ('missing', 'queued', 'processing', 'ready', 'failed')),
+    avatar_base_key TEXT,                     -- segmented 2.5D avatar base
+    avatar_profile  JSONB NOT NULL DEFAULT '{}'::jsonb,
+    avatar_error    TEXT,
+    avatar_analyzed_at TIMESTAMPTZ,
     onboarding_done BOOLEAN NOT NULL DEFAULT FALSE,
     is_admin        BOOLEAN NOT NULL DEFAULT FALSE,
     is_suspended    BOOLEAN NOT NULL DEFAULT FALSE,
@@ -78,6 +84,7 @@ CREATE TABLE IF NOT EXISTS items (
     -- AI-generated tags (editable)
     category         TEXT NOT NULL,
     sub_category     TEXT NOT NULL DEFAULT '',
+    display_name     TEXT,
     primary_color    TEXT NOT NULL,
     secondary_colors JSONB NOT NULL DEFAULT '[]'::jsonb,
     pattern          TEXT NOT NULL DEFAULT 'solid',
@@ -87,6 +94,8 @@ CREATE TABLE IF NOT EXISTS items (
     season_tags      JSONB NOT NULL DEFAULT '["all_season"]'::jsonb,
     ethnic_flag      BOOLEAN NOT NULL DEFAULT FALSE,
     confidence       REAL NOT NULL DEFAULT 0.0,
+    processing_status TEXT NOT NULL DEFAULT 'ready'
+        CHECK (processing_status IN ('queued', 'processing', 'ready', 'failed')),
 
     -- Vector embedding (1024-dim: NVIDIA NIM / text-embedding-3-small)
     embedding        vector(1024),
@@ -270,6 +279,27 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_id
     ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
     ON notifications(user_id, is_read) WHERE is_read = FALSE;
+
+-- ============================================================
+-- try_on_sessions (external outfit / screenshot try-on)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS try_on_sessions (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id             TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reference_image_key TEXT NOT NULL,
+    result_image_key    TEXT,
+    prompt_version      TEXT NOT NULL DEFAULT 'external_tryon_v1',
+    provider            TEXT,
+    model               TEXT,
+    method              TEXT,
+    status              TEXT NOT NULL DEFAULT 'queued',
+    error_message       TEXT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at        TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_try_on_sessions_user
+    ON try_on_sessions(user_id, created_at DESC);
 
 -- ============================================================
 -- try_on_jobs (async outfit visualization)

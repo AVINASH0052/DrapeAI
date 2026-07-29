@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/constants/environment.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/drape_ui.dart';
@@ -184,9 +185,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             label: 'Continue with Phone',
             icon: Icons.phone_rounded,
             loading: _loading,
-            onPressed: _loading
-                ? null
-                : () => setState(() => _view = _AuthView.phone),
+            onPressed:
+                _loading ? null : () => setState(() => _view = _AuthView.phone),
           ),
           if (Platform.isIOS) ...[
             const SizedBox(height: 12),
@@ -214,19 +214,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 8),
-          Center(
-            child: TextButton(
-              onPressed: () =>
-                  ref.read(authStatusProvider.notifier).devBypass(),
-              child: Text(
-                'skip for now (dev)',
-                style: AppTypography.caption.copyWith(
-                  decoration: TextDecoration.underline,
+          if (Environment.enableDevTestFlow) ...[
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton.icon(
+                onPressed: () =>
+                    ref.read(authStatusProvider.notifier).devBypass(),
+                icon: const Icon(Icons.science_outlined, size: 18),
+                label: Text(
+                  'Open developer test flow',
+                  style: AppTypography.caption.copyWith(
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
           const SizedBox(height: 16),
           Center(
             child: Text.rich(
@@ -358,8 +361,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 const TextSpan(text: 'code sent to '),
                 TextSpan(
                   text: _fullPhone,
-                  style: AppTypography.label
-                      .copyWith(color: AppColors.orange),
+                  style: AppTypography.label.copyWith(color: AppColors.orange),
                 ),
               ],
             ),
@@ -403,7 +405,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     onTap: _sendOtp,
                     child: Text(
                       'Resend code',
-                      style: AppTypography.label.copyWith(color: AppColors.orange),
+                      style:
+                          AppTypography.label.copyWith(color: AppColors.orange),
                     ),
                   ),
           ),
@@ -538,8 +541,8 @@ class _GoogleLogoPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = sw;
 
-    canvas.drawArc(rect, -pi / 2, pi * 7 / 6, false,
-        seg(const Color(0xFF4285F4)));
+    canvas.drawArc(
+        rect, -pi / 2, pi * 7 / 6, false, seg(const Color(0xFF4285F4)));
     canvas.drawArc(
         rect, pi * 2 / 3, pi / 3, false, seg(const Color(0xFFFBBC05)));
     canvas.drawArc(rect, pi, pi / 3, false, seg(const Color(0xFF34A853)));

@@ -101,11 +101,76 @@ async def upload_try_on_photo(
     return key
 
 
+async def upload_avatar_base(user_id: str, image_bytes: bytes) -> str:
+    """Upload the transparent, segmented image used as the 2.5D avatar base."""
+    key = f"users/{user_id}/avatar/base.png"
+
+    if settings.environment == "development":
+        path = LOCAL_UPLOAD_DIR / key
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(image_bytes)
+        return key
+
+    client = _get_r2_client()
+    client.put_object(
+        Bucket=settings.r2_bucket_name,
+        Key=key,
+        Body=image_bytes,
+        ContentType="image/png",
+    )
+    return key
+
+
 async def upload_outfit_preview(
     user_id: str, outfit_id: str, image_bytes: bytes
 ) -> str:
     """Upload generated outfit visualization preview."""
     key = f"users/{user_id}/outfits/{outfit_id}/preview.png"
+
+    if settings.environment == "development":
+        path = LOCAL_UPLOAD_DIR / key
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(image_bytes)
+        return key
+
+    client = _get_r2_client()
+    client.put_object(
+        Bucket=settings.r2_bucket_name,
+        Key=key,
+        Body=image_bytes,
+        ContentType="image/png",
+    )
+    return key
+
+
+async def upload_try_on_session_ref(
+    user_id: str, session_id: str, image_bytes: bytes, content_type: str = "image/jpeg"
+) -> str:
+    """Upload external outfit/garment reference for a try-on session."""
+    ext = "jpg" if "jpeg" in content_type else "png"
+    key = f"users/{user_id}/try_on/sessions/{session_id}/ref.{ext}"
+
+    if settings.environment == "development":
+        path = LOCAL_UPLOAD_DIR / key
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(image_bytes)
+        return key
+
+    client = _get_r2_client()
+    client.put_object(
+        Bucket=settings.r2_bucket_name,
+        Key=key,
+        Body=image_bytes,
+        ContentType=content_type,
+    )
+    return key
+
+
+async def upload_try_on_session_result(
+    user_id: str, session_id: str, image_bytes: bytes
+) -> str:
+    """Upload generated external try-on result."""
+    key = f"users/{user_id}/try_on/sessions/{session_id}/result.png"
 
     if settings.environment == "development":
         path = LOCAL_UPLOAD_DIR / key

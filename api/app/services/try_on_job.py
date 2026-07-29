@@ -24,6 +24,35 @@ def _next_utc_midnight() -> str:
     return reset.isoformat().replace("+00:00", "Z")
 
 
+def check_avatar_ready(avatar_status: str | None, avatar_error: str | None) -> None:
+    """Reject generation when the saved body photo isn't usable.
+
+    Upload stores the photo and returns 202 before validation runs, so
+    ``try_on_photo_key`` being set says nothing about whether the photo
+    passed. Without this gate a rejected photo (e.g. a back view) still
+    reaches the provider, producing a garbled result and consuming quota.
+    ``None`` is treated as ready so rows predating the avatar columns, and
+    deployments with the avatar pipeline disabled, keep working.
+    """
+    if avatar_status in (None, "ready"):
+        return
+    if avatar_status in ("queued", "processing"):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Your photo is still being prepared. Try again in a moment.",
+                "avatar_status": avatar_status,
+            },
+        )
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "message": avatar_error or "Use a clear, front-facing full-body photo.",
+            "avatar_status": avatar_status or "failed",
+        },
+    )
+
+
 async def check_tryon_enabled() -> None:
     if not settings.tryon_enabled:
         raise HTTPException(
@@ -159,21 +188,28 @@ async def fail_if_stale(conn, job: dict, user_id: str) -> dict:
     if age <= _stale_after_seconds():
         return job
     job_id = str(job["id"])
-    await mark_failed(conn, job_id, "Timed out waiting for worker")
-    await refund_daily_count(user_id)
+    won = await mark_failed(conn, job_id, "Timed out waiting for worker")
+    if won:
+        await refund_daily_count(user_id)
     refreshed = await get_job(conn, job_id, user_id)
     return refreshed or job
 
 
-async def create_job(conn, user_id: str, outfit_id: str) -> dict:
+async def create_job(
+    conn,
+    user_id: str,
+    outfit_id: str | None = None,
+    session_id: str | None = None,
+) -> dict:
     row = await conn.fetchrow(
         """
-        INSERT INTO try_on_jobs (user_id, outfit_id, status)
-        VALUES ($1, $2::uuid, 'queued')
+        INSERT INTO try_on_jobs (user_id, outfit_id, session_id, status)
+        VALUES ($1, $2::uuid, $3::uuid, 'queued')
         RETURNING *
         """,
         user_id,
         outfit_id,
+        session_id,
     )
     return dict(row)
 
@@ -206,8 +242,11 @@ async def mark_completed(
     method: str,
     provider: str | None,
     model: str | None,
-) -> None:
-    await conn.execute(
+) -> bool:
+    """Returns False if the job was already terminal (e.g. marked failed by
+    a stale-job check while genuinely still processing) — the row is left
+    as-is so a client-visible terminal status never silently flips."""
+    tag = await conn.execute(
         """
         UPDATE try_on_jobs
         SET status = 'completed',
@@ -216,7 +255,7 @@ async def mark_completed(
             provider = $4,
             model = $5,
             completed_at = NOW()
-        WHERE id = $1::uuid
+        WHERE id = $1::uuid AND status IN ('queued', 'processing')
         """,
         job_id,
         result_key,
@@ -224,20 +263,22 @@ async def mark_completed(
         provider,
         model,
     )
+    return tag != "UPDATE 0"
 
 
-async def mark_failed(conn, job_id: str, error: str) -> None:
-    await conn.execute(
+async def mark_failed(conn, job_id: str, error: str) -> bool:
+    tag = await conn.execute(
         """
         UPDATE try_on_jobs
         SET status = 'failed',
             error_message = $2,
             completed_at = NOW()
-        WHERE id = $1::uuid
+        WHERE id = $1::uuid AND status IN ('queued', 'processing')
         """,
         job_id,
         error[:500],
     )
+    return tag != "UPDATE 0"
 
 
 def job_status_payload(job: dict) -> dict[str, Any]:
@@ -262,7 +303,7 @@ async def enqueue_visualize_job(job_id: str, user_id: str, outfit_id: str) -> bo
         from arq import create_pool
         from app.workers.worker import _parse_redis_url
 
-        redis = await create_pool(_parse_redis_url())
+        redis = await create_pool(_parse_redis_url(fast_fail=True))
         try:
             # Name must match WorkerSettings.functions registration, which uses
             # the full dotted path.
@@ -278,6 +319,31 @@ async def enqueue_visualize_job(job_id: str, user_id: str, outfit_id: str) -> bo
         return True
     except Exception as e:
         logger.warning(f"tryon: ARQ enqueue failed, will run inline: {e!r}")
+        return False
+
+
+async def enqueue_external_tryon_job(
+    job_id: str, user_id: str, session_id: str
+) -> bool:
+    """Enqueue ARQ task for external try-on. Returns False if unavailable."""
+    try:
+        from arq import create_pool
+        from app.workers.worker import _parse_redis_url
+
+        redis = await create_pool(_parse_redis_url(fast_fail=True))
+        try:
+            await redis.enqueue_job(
+                "app.workers.tasks.process_external_try_on",
+                str(job_id),
+                user_id,
+                session_id,
+                _job_id=f"tryon-ext:{job_id}",
+            )
+        finally:
+            await redis.close()
+        return True
+    except Exception as e:
+        logger.warning(f"tryon external: ARQ enqueue failed: {e!r}")
         return False
 
 
@@ -339,7 +405,7 @@ async def run_visualize_job(job_id: str, user_id: str, outfit_id: str) -> dict:
         await mark_processing(conn, job_id)
         row = await conn.fetchrow(
             """
-            SELECT u.try_on_photo_key
+            SELECT u.try_on_photo_key, u.avatar_status, u.avatar_error
             FROM users u
             WHERE u.id = $1
             """,
@@ -349,6 +415,14 @@ async def run_visualize_job(job_id: str, user_id: str, outfit_id: str) -> dict:
             await mark_failed(conn, job_id, "No try-on photo")
             await refund_daily_count(user_id)
             raise RuntimeError("No try-on photo")
+
+        # Re-check here too: background validation can land between the route
+        # accepting the request and the worker picking the job up.
+        if row["avatar_status"] not in (None, "ready"):
+            reason = row["avatar_error"] or "Use a clear, front-facing full-body photo."
+            await mark_failed(conn, job_id, reason)
+            await refund_daily_count(user_id)
+            raise RuntimeError(reason)
 
         items = await get_outfit_items_from_db(conn, outfit_id, user_id)
         if not items:
@@ -377,7 +451,7 @@ async def run_visualize_job(job_id: str, user_id: str, outfit_id: str) -> dict:
             provider = None
             if viz.method.startswith("ai:"):
                 provider = viz.method.split(":", 1)[1]
-            await mark_completed(
+            won = await mark_completed(
                 conn,
                 job_id,
                 result_key=viz.preview_key,
@@ -385,9 +459,22 @@ async def run_visualize_job(job_id: str, user_id: str, outfit_id: str) -> dict:
                 provider=provider,
                 model=viz.model,
             )
+            if not won:
+                # A stale-job check already terminalized this row (e.g. the
+                # worker took far longer than expected) while this generation
+                # was genuinely still in flight and has now succeeded. The
+                # outfit's preview_image_key update above still lands, so a
+                # later non-forced visualize will pick up the real result —
+                # only this specific job row keeps its earlier terminal state.
+                logger.warning(
+                    f"tryon: job {job_id} completed after already being "
+                    "terminalized elsewhere (likely a stale-job timeout); "
+                    "outfit preview was still saved"
+                )
             job = await get_job(conn, job_id, user_id)
             return job_status_payload(job or {})
         except Exception as e:
-            await mark_failed(conn, job_id, str(e))
-            await refund_daily_count(user_id)
+            refunded = await mark_failed(conn, job_id, str(e))
+            if refunded:
+                await refund_daily_count(user_id)
             raise

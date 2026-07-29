@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/environment.dart';
 import '../../../core/network/api_client.dart';
@@ -10,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/drape_ui.dart';
+import '../../try_on/services/try_on_photo_actions.dart';
 import '../models/outfit_model.dart';
 
 /// Full-screen sheet that generates and shows "see me in this outfit" preview.
@@ -324,10 +324,13 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
               ),
               const SizedBox(height: 20),
               DrapeGradientButton(
-                label: 'Go to Profile',
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  context.push('/profile');
+                label: 'Add photo here',
+                onPressed: () async {
+                  final ok = await uploadTryOnPhotoInPlace(ref, context);
+                  if (ok && mounted) {
+                    setState(() => _error = null);
+                    await _generate(force: false);
+                  }
                 },
               ),
             ],

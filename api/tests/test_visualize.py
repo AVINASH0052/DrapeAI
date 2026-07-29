@@ -5,6 +5,8 @@ import io
 import pytest
 from PIL import Image
 
+from tests.helpers import mark_avatar_ready
+
 
 def _make_test_png(w: int = 100, h: int = 150, color=(100, 150, 200)) -> bytes:
     img = Image.new("RGB", (w, h), color)
@@ -22,7 +24,7 @@ async def test_try_on_photo_upload(client, auth_headers, clean_db):
         headers=auth_headers,
         files={"image": ("body.png", png, "image/png")},
     )
-    assert resp.status_code == 201
+    assert resp.status_code == 202
     data = resp.json()
     assert data["uploaded"] is True
     assert "try_on_photo_url" in data
@@ -61,7 +63,8 @@ async def test_visualize_generates_preview(
         headers=auth_headers,
         files={"image": ("body.png", png, "image/png")},
     )
-    assert up.status_code == 201
+    assert up.status_code == 202
+    await mark_avatar_ready()
 
     # Place a dummy item image on disk for composite
     item_key = f"users/test-user-001/items/{test_item}.png"
@@ -115,7 +118,8 @@ async def test_visualize_daily_limit(
         headers=auth_headers,
         files={"image": ("body.png", png, "image/png")},
     )
-    assert up.status_code == 201
+    assert up.status_code == 202
+    await mark_avatar_ready()
 
     item_key = f"users/test-user-001/items/{test_item}.png"
     path = Path("uploads") / item_key

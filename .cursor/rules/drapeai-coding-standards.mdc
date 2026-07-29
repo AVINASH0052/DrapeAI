@@ -1,0 +1,41 @@
+---
+description: DrapeAI coding standards — always follow when implementing code
+alwaysApply: true
+---
+
+# DrapeAI implementation standards
+
+When implementing or changing **any** code in this repo (`api/`, `app/`, `admin/`, `infra/`), follow project standards. **Source of truth:**
+
+- **[docs/rules/CODING-STANDARDS.md](docs/rules/CODING-STANDARDS.md)** — critical rules
+- **[docs/rules/CODING-RULES-HANDBOOK.md](docs/rules/CODING-RULES-HANDBOOK.md)** — day-to-day checklist
+- **[docs/rules/AGENTS.md](docs/rules/AGENTS.md)** — architecture invariants
+- **[docs/README.md](docs/README.md)** — documentation handbook
+- **[docs/instructions/](docs/instructions/)** — task profiles (API, Flutter UI, migration, test, review)
+
+If a standard conflicts with an explicit user request, follow the user and note the deviation.
+
+## Non-negotiable
+
+1. **User ownership** — authenticate via Firebase JWT; SQL always filters by `user_id` for user data.
+2. **Parameterized SQL** — never concatenate user input into SQL.
+3. **No live secrets in git** — never commit `.env` or API keys; document new vars in `.env.example`.
+4. **Async API I/O** — FastAPI handlers stay non-blocking; long work via ARQ.
+5. **AI / try-on via services** — use `image_gen_provider` / existing AI services + Settings; do not scatter provider SDKs in routes.
+6. **Light theme / no emoji** — Material Icons + `AppColors`; no emoji in UI or logs.
+7. **Monolith** — do not add microservices unless explicitly asked.
+8. **IDM-VTON NC license** — do not claim commercial rights for IDM-VTON without legal clearance.
+9. **Update docs** when behaviour/ops/API changes (`docs/` handbook + deep dives).
+10. **Scope** — no unrelated refactors; match local style.
+
+## Language quick rules
+
+| Stack | Do | Don't |
+|-------|-----|-------|
+| Python | async, Pydantic, `$1` SQL, `logging`, `httpx` | SQL f-strings, sync HTTP in async, log secrets |
+| Dart | Riverpod, GoRouter, theme tokens, Dio auth | emoji, ignore errors, hardcode secrets |
+| Admin React | Admin API client | Direct DB access |
+
+## Before merge
+
+Auth/ownership covered · tests for touched behaviour · no secrets · docs if needed. Human review for auth, migrations, and try-on spend/licensing.
