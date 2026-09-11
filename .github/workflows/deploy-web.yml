@@ -1,0 +1,33 @@
+name: Deploy web
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/deploy-web.yml"
+
+jobs:
+  deploy:
+    name: Deploy sugatai-web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install and build
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+      - name: Publish Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: "62aadb3834a0c4dc039b2bfdbf4b3d3f"
+          workingDirectory: web
+          command: deploy
