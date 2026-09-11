@@ -38,6 +38,7 @@ def test_build_tryon_prompt_uses_template():
     assert "blue" in prompt
     assert "kurta" in prompt
     assert "Preserve face" in prompt or "preserve face" in prompt.lower()
+    assert "KEEP" in prompt or "keep" in prompt.lower()
 
 
 def test_sort_items_for_tryon_priority():
@@ -76,11 +77,14 @@ async def test_generate_tryon_cloudflare_success():
     with patch("app.services.image_gen_provider._route_tryon") as route, \
          patch("app.services.image_gen_provider._provider_configured", return_value=True), \
          patch("app.services.image_gen_provider.get_http_client", return_value=mock_client), \
-         patch("app.services.image_gen_provider._load_item_bytes", new_callable=AsyncMock) as mock_load, \
+         patch(
+             "app.services.image_gen_provider._load_item_bytes_with_meta",
+             new_callable=AsyncMock,
+         ) as mock_load, \
          patch("app.services.image_gen_provider.settings") as mock_settings, \
          patch("app.services.image_gen_provider._track_tryon_cost", new_callable=AsyncMock):
         route.return_value = [("cloudflare", "@cf/black-forest-labs/flux-2-klein-9b")]
-        mock_load.return_value = [_png_bytes()]
+        mock_load.return_value = [(items[0], _png_bytes())]
         mock_settings.cloudflare_account_id = "acct"
         mock_settings.cloudflare_api_token = "tok"
         mock_settings.r2_account_id = ""
@@ -107,7 +111,10 @@ async def test_generate_tryon_failover_cloudflare_to_openai():
          patch("app.services.image_gen_provider._provider_configured", return_value=True), \
          patch("app.services.image_gen_provider._cloudflare_tryon", new_callable=AsyncMock) as mock_cf, \
          patch("app.services.image_gen_provider._openai_tryon", new_callable=AsyncMock) as mock_openai, \
-         patch("app.services.image_gen_provider._load_item_bytes", new_callable=AsyncMock) as mock_load, \
+         patch(
+             "app.services.image_gen_provider._load_item_bytes_with_meta",
+             new_callable=AsyncMock,
+         ) as mock_load, \
          patch("app.services.image_gen_provider._track_tryon_cost", new_callable=AsyncMock):
         route.return_value = [
             ("cloudflare", "@cf/black-forest-labs/flux-2-klein-9b"),

@@ -4,14 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:drapeai/core/theme/app_theme.dart';
-import 'package:drapeai/features/outfits/presentation/today_screen.dart';
-import 'package:drapeai/features/outfits/providers/today_provider.dart';
-import 'package:drapeai/features/outfits/providers/weather_provider.dart';
-import 'package:drapeai/features/outfits/models/outfit_model.dart';
-import 'package:drapeai/features/profile/providers/user_profile_provider.dart';
-import 'package:drapeai/features/wardrobe/models/item_model.dart';
-import 'package:drapeai/features/wardrobe/providers/wardrobe_provider.dart';
+import 'package:sugatai/core/theme/app_theme.dart';
+import 'package:sugatai/features/outfits/presentation/today_screen.dart';
+import 'package:sugatai/features/outfits/providers/today_provider.dart';
+import 'package:sugatai/features/outfits/providers/weather_provider.dart';
+import 'package:sugatai/features/outfits/models/outfit_model.dart';
+import 'package:sugatai/features/profile/providers/user_profile_provider.dart';
+import 'package:sugatai/features/wardrobe/models/item_model.dart';
+import 'package:sugatai/features/wardrobe/providers/wardrobe_provider.dart';
 
 class _EmptyWardrobeNotifier extends WardrobeNotifier {
   @override

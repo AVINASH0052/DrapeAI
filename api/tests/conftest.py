@@ -106,11 +106,15 @@ async def clean_db(setup_db):
                 method          TEXT,
                 result_key      TEXT,
                 error_message   TEXT,
+                directives      TEXT,
                 created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 started_at      TIMESTAMPTZ,
                 completed_at    TIMESTAMPTZ
             )
             """
+        )
+        await conn.execute(
+            "ALTER TABLE try_on_jobs ADD COLUMN IF NOT EXISTS directives TEXT"
         )
     yield
     pool = await get_pool()

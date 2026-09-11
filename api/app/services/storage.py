@@ -1,6 +1,7 @@
 """Storage abstraction: R2 in production, local filesystem in development."""
 
 import logging
+import uuid
 from pathlib import Path
 
 import boto3
@@ -50,19 +51,36 @@ async def upload_image(user_id: str, item_id: str, image_bytes: bytes, content_t
     return key
 
 
-def get_image_url(key: str) -> str:
-    """Convert storage key to a relative URL.
+SIGNED_URL_TTL_SEC = 3600
 
-    Returning a path-only URL lets the mobile client resolve it against
-    whatever base URL it is using — localhost on macOS, the ngrok tunnel
-    on a real device, the prod domain in production. This avoids baking
-    `localhost:8000` into image URLs that a phone over cellular can't reach.
+
+def user_owns_key(user_id: str, key: str) -> bool:
+    """True when the object key is under this user's private prefix."""
+    if not user_id or not key:
+        return False
+    return key.startswith(f"users/{user_id}/")
+
+
+def get_image_url(key: str) -> str:
+    """Convert a storage key to a client-fetchable URL.
+
+    Development: path-only `/uploads/...` so the app can resolve against
+    whatever API host it is using.
+
+    Production: short-lived signed R2 URL. The bucket stays private —
+    `R2_PUBLIC_URL` is never used for wardrobe, avatar, or try-on objects.
     """
+    if not key:
+        return ""
     if settings.environment == "development":
         return f"/uploads/{key}"
-    if settings.r2_public_url:
-        return f"{settings.r2_public_url}/{key}"
-    return f"/uploads/{key}"
+    ttl = getattr(settings, "signed_url_ttl_sec", SIGNED_URL_TTL_SEC) or SIGNED_URL_TTL_SEC
+    client = _get_r2_client()
+    return client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.r2_bucket_name, "Key": key},
+        ExpiresIn=int(ttl),
+    )
 
 
 async def read_image_bytes(key: str) -> bytes:
@@ -125,7 +143,8 @@ async def upload_outfit_preview(
     user_id: str, outfit_id: str, image_bytes: bytes
 ) -> str:
     """Upload generated outfit visualization preview."""
-    key = f"users/{user_id}/outfits/{outfit_id}/preview.png"
+    # New file each write so clients/CDN do not keep showing the previous look.
+    key = f"users/{user_id}/outfits/{outfit_id}/preview-{uuid.uuid4().hex[:12]}.png"
 
     if settings.environment == "development":
         path = LOCAL_UPLOAD_DIR / key
@@ -189,7 +208,9 @@ async def upload_try_on_session_result(
 
 
 async def delete_image(key: str) -> None:
-    """Delete image from storage."""
+    """Delete one object. Missing keys are a no-op so retries stay safe."""
+    if not key:
+        return
     if settings.environment == "development":
         path = LOCAL_UPLOAD_DIR / key
         if path.exists():
@@ -197,5 +218,40 @@ async def delete_image(key: str) -> None:
         return
 
     client = _get_r2_client()
-    client.delete_object(Bucket=settings.r2_bucket_name, Key=key)
-    logger.info(f"Deleted from R2: {key}")
+    try:
+        client.delete_object(Bucket=settings.r2_bucket_name, Key=key)
+    except Exception:
+        logger.warning("R2 delete skipped or failed for an object")
+        return
+    logger.info("Deleted from R2: %s", key)
+
+
+async def delete_user_prefix(user_id: str) -> None:
+    """Remove leftover objects under users/{user_id}/ after row cleanup."""
+    if not user_id:
+        return
+    prefix = f"users/{user_id}/"
+    if settings.environment == "development":
+        root = LOCAL_UPLOAD_DIR / prefix
+        if root.exists():
+            for path in root.rglob("*"):
+                if path.is_file():
+                    path.unlink()
+        return
+
+    client = _get_r2_client()
+    token = None
+    while True:
+        kwargs = {"Bucket": settings.r2_bucket_name, "Prefix": prefix}
+        if token:
+            kwargs["ContinuationToken"] = token
+        resp = client.list_objects_v2(**kwargs)
+        keys = [{"Key": obj["Key"]} for obj in resp.get("Contents") or []]
+        if keys:
+            client.delete_objects(
+                Bucket=settings.r2_bucket_name,
+                Delete={"Objects": keys, "Quiet": True},
+            )
+        if not resp.get("IsTruncated"):
+            break
+        token = resp.get("NextContinuationToken")

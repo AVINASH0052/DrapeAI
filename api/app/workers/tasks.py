@@ -57,14 +57,11 @@ async def process_upload(ctx: dict[str, Any], item_id: str, user_id: str) -> str
 
 async def regenerate_embedding(ctx: dict[str, Any], item_id: str) -> str:
     """Re-generate embedding for a single item after tag edits."""
-    from app.database.pool import get_pool
-    from app.services.embedding import generate_and_store_embedding
+    from app.services.upload_pipeline import regenerate_embedding as _regen
 
-    logger.info(f"[worker] regenerate_embedding: item={item_id}")
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await generate_and_store_embedding(conn, item_id)
-    logger.info(f"[worker] regenerate_embedding complete: item={item_id}")
+    logger.info("[worker] regenerate_embedding: item=%s", item_id)
+    await _regen(item_id)
+    logger.info("[worker] regenerate_embedding complete: item=%s", item_id)
     return f"ok:{item_id}"
 
 
@@ -103,6 +100,28 @@ async def process_try_on(
         return f"ok:{job_id}"
     except Exception as e:
         logger.error(f"[worker] process_try_on failed: job={job_id}: {e!r}")
+        raise
+
+
+async def process_try_on_refine(
+    ctx: dict[str, Any],
+    job_id: str,
+    user_id: str,
+    outfit_id: str,
+) -> str:
+    """Refine an existing try-on preview from freeform text."""
+    from app.services.try_on_job import run_refine_job
+
+    logger.info(f"[worker] process_try_on_refine: job={job_id} outfit={outfit_id}")
+    try:
+        result = await run_refine_job(job_id, user_id, outfit_id)
+        logger.info(
+            f"[worker] process_try_on_refine complete: "
+            f"job={job_id} status={result.get('status')}"
+        )
+        return f"ok:{job_id}"
+    except Exception as e:
+        logger.error(f"[worker] process_try_on_refine failed: job={job_id}: {e!r}")
         raise
 
 

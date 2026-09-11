@@ -1,19 +1,23 @@
-# DrapeAI — Application Documentation
+# Sugatai — Application Documentation
 
 A personal AI stylist that catalogues your wardrobe, generates outfit recommendations using rules + LLMs, lets you refine them in natural language, and analyses gaps in your wardrobe. Mobile app (Flutter) + Python FastAPI backend.
+
+> Repo folder: **Sugatai**. Prefer [architecture/OVERVIEW.md](architecture/OVERVIEW.md) for the package map.
 
 ---
 
 ## 1. Product Summary
 
-DrapeAI lives at the intersection of **wardrobe management** and **personalised styling**. The user:
+Sugatai lives at the intersection of **wardrobe management** and **personalised styling**. The user:
 
-1. Photographs each piece of clothing → AI auto-tags it (category, color, formality, fabric, pattern, season)
-2. Builds a comprehensive style profile during onboarding (name, age, gender, style goals, body type, skin undertone, budget, climate)
-3. Asks the app for outfits — by occasion, time of day, or via "shuffle"
-4. Refines suggestions through chat ("make this more formal", "swap to darker colors")
-5. Saves favourites to **Lookbooks** (themed collections)
-6. Gets AI gap analysis: "What should I buy next?" with prioritised recommendations
+1. Sets up a full-body photo → private avatar base for studio renders and try-on
+2. Photographs each piece of clothing → AI auto-tags it (category, color, formality, fabric, pattern, season)
+3. Builds a 9-step style profile during onboarding (name, age, gender, style goals, occasions, colors, fit, city/climate; optional body/budget/lifestyle)
+4. Asks the app for outfits — by occasion, weather, or via "shuffle"
+5. Refines suggestions through chat ("make this more formal", "swap to darker colors")
+6. Tries outfits on the avatar or a shop garment in Fitting Room
+7. Saves favourites to **Lookbooks**, assigns wears on the **Calendar**, and reviews **Analytics**
+8. Gets AI gap analysis: "What should I buy next?" with prioritised recommendations
 
 The system mixes rule-based outfit composition (color harmony, formality match) with LLM ranking that incorporates the user's accumulated feedback (likes / dislikes / saves) — RLHF-lite without explicit fine-tuning.
 
@@ -22,23 +26,22 @@ The system mixes rule-based outfit composition (color harmony, formality match) 
 ## 2. Technical Stack
 
 ### Mobile app (`/app`)
-- **Flutter 3.41** + **Dart 3**
-- **Riverpod** (state management)
-- **go_router** (declarative routing)
-- **Firebase Auth** (phone OTP + Google Sign-In) with `test-token` dev bypass
-- **Dio** (HTTP client)
+- **Flutter 3.x** + **Dart 3** (package name `sugatai`, bundle `com.sugatai.sugatai`)
+- **Riverpod** + **go_router** + **Dio**
+- **Firebase Auth** (phone OTP + Google + Apple) with gated `test-token` dev flow
 - **image_picker** (camera + gallery)
-- **Instrument Serif** + **JetBrains Mono** (Google Fonts)
-- Single codebase: iOS, Android, macOS, Web
+- Typography: **Syne** + **Plus Jakarta Sans** (see `design-system/sugatai/`)
+- Platforms: iOS, Android (macOS target optional)
 
 ### Backend (`/api`)
 - **FastAPI** (Python 3.11)
-- **PostgreSQL 16** + **pgvector** (embeddings stored as `vector(1536)`)
-- **Multi-provider AI abstraction** — OpenAI, Anthropic, NVIDIA NIM (Kimi K2.6 primary), Groq — with automatic failover
-- **Cloudflare R2** (image storage; S3-compatible)
+- **PostgreSQL 16** + **pgvector** (`vector(1024)`; primary embed `nvidia/nv-embedqa-e5-v5`)
+- **Multi-provider AI** — Gemini / Vertex / OpenAI / Anthropic / Groq / NVIDIA / Cloudflare / RunPod
+- **Cloudflare R2** (prod) or local `./uploads` (dev)
 - **Firebase Admin SDK** (token verification)
-- **OpenWeather** (weather-aware suggestions)
-- **Sentry** (errors)
+- **Open-Meteo** (weather; no API key)
+- **Redis + ARQ** in production
+- **Sentry** (optional)
 
 ### Infrastructure (`/infra`)
 - **Docker Compose** for dev (`docker-compose.dev.yml`) and prod (`docker-compose.prod.yml`)
@@ -91,29 +94,42 @@ The system mixes rule-based outfit composition (color harmony, formality match) 
 | 8 | `location_city` + auto-detected `climate` (`tropical`/`subtropical`/`temperate`/`arid`/`cold`) | Search + city list + climate pill |
 | 9 (optional) | `body_type`, `skin_undertone`, `height_cm`, `budget_tier`, `lifestyle` | All skippable on one screen |
 
-### 4.3 Wardrobe (`features/wardrobe/`)
+### 4.3 Body setup + Avatar Studio (`features/avatar/`)
+- **body_setup_screen** — required after first login; full-body source photo → `avatar_status=queued` → ARQ pose/visibility check + person segment
+- **avatar_studio_screen** — default home (`/studio`); dress the avatar from wardrobe slots, render via `/avatar/render`, poll until the preview lands
+
+### 4.4 Wardrobe (`features/wardrobe/`)
 - **wardrobe_screen** — grid of all items; filters by category; tap → detail
-- **camera_screen** — camera + gallery picker; uploads → AI auto-tag pipeline
-- **tag_review_screen** — shown after upload; user can override AI-detected category / color / formality / fabric / season before saving
+- **camera_screen** — camera + gallery picker with photo-guide overlay; uploads → AI auto-tag pipeline (tags are editable on item detail, not a separate review screen)
 - **item_detail_screen** — image, all tags, brand, price, wear count, **"Pairs well with…"** horizontal row (top 5 items by embedding cosine + rule compatibility + co-occurrence in saved outfits)
-- **gaps_screen** — AI gap analysis: prioritised list of items to buy with rationale tied to the user's lifestyle, climate, and existing wardrobe (uses Claude Sonnet 4.6 via `Role.REASON`)
+- **gaps_screen** — AI gap analysis: prioritised list of items to buy with rationale tied to the user's lifestyle, climate, and existing wardrobe (`Role.REASON`)
 
-### 4.4 Outfits (`features/outfits/`)
-- **today_screen** — "Today's looks" — 3 outfits for current weather + default occasion. Each card: items thumbnail row, occasion chip, weather chip, LLM reason ("Why this works"), action row: 💬 Tweak, ❤️ Save, ✓ Wore it, ✕ Skip
-- **shuffle_screen** — Tinder-style swipe (Hinge UI): generates random combos; swipe right to save, left to dislike
-- **outfit_chat_sheet** — bottom sheet for chat refinement. Suggestion chips ("Make it more formal", "Try darker colors"). Sends current outfit + user message → backend swaps items → returns updated outfit with reason. Item thumbnails update live.
+### 4.5 Outfits (`features/outfits/`)
+- **today_screen** — "Today's looks" — 3 outfits for current weather + default occasion. Each card: item thumbnails, occasion/weather chips, LLM reason, actions: Tweak, Save, Wore it, Skip
+- **shuffle_screen** — swipe deck of random combos; swipe right to save, left to dislike
+- **outfit_chat_sheet** — bottom sheet for chat refinement. Suggestion chips ("Make it more formal", "Try darker colors"). Sends current outfit + user message → backend swaps items → returns updated outfit with reason
 
-### 4.5 Lookbooks (`features/lookbooks/`)
+### 4.6 Try-on / Fitting Room (`features/try_on/`)
+- **fitting_room_screen** — try a saved outfit on the avatar or a body photo
+- **try_on_home_screen** (`/fitting-room/shop`) — external / shop garment try-on
+- **try_on_history_screen** — past renders
+
+### 4.7 Lookbooks (`features/lookbooks/`)
 - **lookbooks_screen** — list of user's themed collections (e.g. "Work week", "Festive 2026")
 - **lookbook_detail_screen** — outfits inside a lookbook; add/remove outfits
 
-### 4.6 Profile (`features/profile/`)
+### 4.8 Calendar, analytics, notifications
+- **calendar_screen** — assign / remove an outfit per date
+- **analytics_screen** — wardrobe utilisation, wear history, cost-per-wear
+- **notifications_screen** — in-app notification list + FCM
+
+### 4.9 Profile (`features/profile/`)
 - Profile header: avatar (initial gradient), name, "Free" badge, member-since
 - **Style profile** card: chip row of all preferences + "Retake quiz" link to onboarding
 - **Wardrobe stats**: Items, Saved, In rotation %
 - **AI insights** card: "What should I buy next?" → gaps_screen
 - **Preferences**: morning notification toggle, appearance, about
-- **Help & legal**: terms, help
+- **Help & legal**: terms, privacy, about
 - Sign out / Delete account
 - Build version footer
 
@@ -125,11 +141,14 @@ All routes are JSON, all return camelCase via Pydantic. All authenticated endpoi
 
 | Route group | Path | Methods |
 |---|---|---|
-| **Health** | `GET /health` | Liveness probe → `{status: "ok", service: "drapeai-api"}` |
+| **Health** | `GET /health` | Liveness probe → `{status, service: "drapeai-api", uptime_seconds, database}` |
 | **Auth** | `POST /auth/verify` | Firebase ID token → user row (creates on first call) |
 | **User** | `GET /me`, `PATCH /me` | Profile read/update |
 | | `GET /me/preferences`, `PUT /me/preferences` | Preferences read/write (used by onboarding) |
-| **Items** | `POST /items/upload` | Multipart image → R2 upload → AI tagging pipeline → row insert |
+| | `POST/DELETE /me/try-on-photo` | Persistent body photo for try-on |
+| | `GET /me/avatar-profile` | Avatar readiness / renderability |
+| **Avatar** | `POST /avatar/render`, `GET /avatar/render/{id}/status` | Studio render job |
+| **Items** | `POST /items/upload` | Multipart image → store → ARQ tag + embed |
 | | `GET /items` | List wardrobe (with filters: category, season, formality) |
 | | `GET /items/{id}` | Single item |
 | | `PATCH /items/{id}` | Override AI tags |
@@ -143,9 +162,14 @@ All routes are JSON, all return camelCase via Pydantic. All authenticated endpoi
 | **Lookbooks** | `POST /lookbooks`, `GET /lookbooks` | Create + list |
 | | `GET/PATCH/DELETE /lookbooks/{id}` | CRUD |
 | | `POST/DELETE /lookbooks/{id}/outfits/{outfit_id}` | Add/remove outfit |
-| **Wardrobe** | `GET /wardrobe/gaps` | AI gap analysis (Claude Sonnet 4.6) |
+| **Try-on** | `POST /try-on/external`, history routes | Shop / external garment try-on |
+| **Calendar** | `GET /calendar`, `POST/DELETE /calendar/{date}` | Wear calendar |
+| **Analytics** | `GET /analytics/overview`, wear-history, category-breakdown | Stats |
+| **Wardrobe** | `GET /wardrobe/gaps` | AI gap analysis (`Role.REASON`) |
+| **Notifications** | `GET /notifications` | In-app list |
 | **Push** | `POST /push/register` | Register FCM token |
-| **Demo** | `GET /demo/wardrobe` | Seeded sample wardrobe for empty accounts |
+| **Admin** | `/admin/*` | Ops console; requires `users.is_admin` |
+| **Waitlist** | `POST /waitlist` | Marketing site sign-up (public) |
 
 ---
 
@@ -168,11 +192,11 @@ The fallback chain handles rate limits, network errors, and per-provider spend c
 ### Vision tagging pipeline (`api/app/services/upload_pipeline.py`)
 
 1. Receive multipart upload
-2. Strip background via `rembg` (`bg_remover.py`)
-3. Send to vision model (Kimi K2.6) with structured prompt → JSON: `{category, primary_color, formality, fabric, pattern, style_tags, season_tags}`
-4. Generate text embedding from concatenated tags (e.g. "navy cotton oxford shirt slim casual")
-5. Upload original + thumbnail to R2
-6. Insert into `items` with `confidence` score
+2. Detect garments with vision (`garment_splitter.detect_garments`) — worn outfits become multiple pieces
+3. AI-extract each piece as a clean product shot via Gemini image gen (`garment_splitter.extract_garment_image`); if detection finds nothing, fall back to whole-image `rembg` (`bg_remover.py`)
+4. Persist each cutout, then background-tag with vision → JSON: `{category, primary_color, formality, fabric, pattern, style_tags, season_tags}`
+5. Generate text embedding from concatenated tags (e.g. "navy cotton oxford shirt slim casual")
+6. Store on R2 / local uploads; `confidence` set when tagging finishes
 
 ### Outfit ranking (`api/app/services/llm_ranker.py`)
 
@@ -207,12 +231,12 @@ Top-N for any item is a weighted sum:
 
 ## 7. Authentication Model
 
-- Firebase Auth provides phone OTP and Google Sign-In on the mobile app
+- Firebase Auth provides phone OTP, Google, and Apple Sign-In on the mobile app
 - The Flutter app obtains an ID token and attaches it to every API request: `Authorization: Bearer <jwt>`
-- FastAPI middleware verifies the token via Firebase Admin SDK, extracts the UID, and ensures a `users` row exists
-- Dev mode: the literal string `test-token` is accepted as a special bypass — backend creates/loads a `test-user` row
+- FastAPI verifies the token via Firebase Admin SDK, extracts the UID, and ensures a `users` row exists
+- Dev mode: the literal string `test-token` is accepted only when `ENVIRONMENT=development` **and** Flutter is launched with `--dart-define=ENABLE_DEV_TEST_FLOW=true`
 
-There is **no email-password auth** today, and **no role/admin field** on `users`. The admin platform (below) will need to introduce one.
+There is **no email-password auth**. `users.is_admin` gates `/admin/*`. The Vite admin console lives at `/workadmin/`.
 
 ---
 
@@ -247,8 +271,8 @@ R2_PUBLIC_URL=
 # Firebase
 FIREBASE_PROJECT_ID=
 
-# Weather
-OPENWEATHER_API_KEY=
+# Weather — Open-Meteo, no API key
+# OPENWEATHER_API_KEY is unused
 
 # Observability
 SENTRY_DSN=
@@ -260,29 +284,30 @@ SENTRY_DSN=
 
 ### Backend
 ```bash
-cd /Users/avinash/Desktop/DrapeAI/infra
+cd /Users/avinash/Desktop/Sugatai/infra
 docker compose -f docker-compose.dev.yml up
 # → API on :8000, Postgres on :5432
 ```
 
 ### Mobile app
 ```bash
-cd /Users/avinash/Desktop/DrapeAI/app
-flutter run -d macos                         # fastest for UI iteration
-flutter run --release -d <iphone-uuid>       # for real device testing
+cd /Users/avinash/Desktop/Sugatai/app
+flutter run --dart-define=ENABLE_DEV_TEST_FLOW=true
+# Wireless iPhone: also pass --dart-define=API_BASE_URL=http://<Mac-LAN-IP>:8000
+# Prefer --profile on wireless iOS if debug LLDB attach dies after install
 ```
 
-For iPhone over cellular hotspot, the API must be tunnelled (e.g. `ngrok http 8000`) and the URL pasted into `app/lib/core/constants/environment.dart`.
+Do not hardcode a tunnel URL in `environment.dart`. Pass `--dart-define=DEV_TUNNEL_URL=...` or `API_BASE_URL=...` per run.
 
 ---
 
 ## 10. Current Limitations / Out-of-Scope
 
-- **No admin UI** — no way to inspect users, items, outfits, or costs except via direct DB queries (this doc's main motivator for the admin platform)
-- **No email auth** — Firebase phone/Google only
-- **No role field** on `users` — needs to be added for admin access control
+- **Admin UI exists** — Vite + React at `admin/` (`/workadmin/`), gated by `users.is_admin`
+- **No email-password auth** — Firebase phone / Google / Apple only
 - **No content moderation** — uploaded images are not screened
 - **No payment / subscription** — "Free" badge on profile is cosmetic
 - **No multi-tenancy** — single workspace, no teams
-- **No real weather API integration in some flows** — `weather_cache` exists; some paths still default to a stub
-- **No event log / audit trail** — `analytics_daily` only stores aggregated metrics, not individual events
+- **Weather** — Open-Meteo (no API key); cached per city
+- **No event log / audit trail** — `analytics_daily` stores aggregated metrics, not individual events
+- **IDM-VTON** — wired but non-commercial (CC BY-NC-SA 4.0); cold-start often falls back to the image-gen cascade

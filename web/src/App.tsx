@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, FormEvent } from 'react'
 import {
   ArrowRight,
   Camera,
@@ -42,6 +42,115 @@ const heroCapsules = [
 ]
 
 const rotatingWords = ['work', 'festivals', 'dates', 'travel', 'monsoon']
+
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(
+  /\/$/,
+  '',
+) ?? ''
+
+type WaitlistStatus = 'idle' | 'loading' | 'success' | 'exists' | 'error'
+
+function WaitlistForm() {
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState<WaitlistStatus>('idle')
+  const [message, setMessage] = useState('')
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const value = email.trim()
+    if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setStatus('error')
+      setMessage('Enter a valid email address.')
+      return
+    }
+
+    setStatus('loading')
+    setMessage('')
+    try {
+      const response = await fetch(`${API_BASE}/waitlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: value, source: 'landing' }),
+      })
+      const data = (await response.json().catch(() => null)) as
+        | { message?: string; already_joined?: boolean; detail?: string }
+        | null
+      if (!response.ok) {
+        const detail =
+          typeof data?.detail === 'string'
+            ? data.detail
+            : 'Could not join right now. Try again.'
+        setStatus('error')
+        setMessage(detail)
+        return
+      }
+      setStatus(data?.already_joined ? 'exists' : 'success')
+      setMessage(
+        data?.message ??
+          (data?.already_joined
+            ? 'You are already on the early list.'
+            : 'You are on the early list.'),
+      )
+      if (!data?.already_joined) setEmail('')
+    } catch {
+      setStatus('error')
+      setMessage('Could not reach Sugatai. Check your connection and try again.')
+    }
+  }
+
+  if (status === 'success' || status === 'exists') {
+    return (
+      <div className="waitlist-done" role="status">
+        <Check size={18} aria-hidden="true" />
+        <p>{message}</p>
+      </div>
+    )
+  }
+
+  return (
+    <form className="waitlist-form" onSubmit={onSubmit} noValidate>
+      <label className="sr-only" htmlFor="waitlist-email">
+        Email address
+      </label>
+      <div className="waitlist-row">
+        <input
+          id="waitlist-email"
+          type="email"
+          name="email"
+          autoComplete="email"
+          placeholder="you@email.com"
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value)
+            if (status === 'error') {
+              setStatus('idle')
+              setMessage('')
+            }
+          }}
+          disabled={status === 'loading'}
+          required
+        />
+        <button
+          className="button button-light"
+          type="submit"
+          disabled={status === 'loading'}
+        >
+          {status === 'loading' ? 'Joining…' : 'Join the early list'}
+          {status !== 'loading' ? (
+            <ArrowRight size={18} aria-hidden="true" />
+          ) : null}
+        </button>
+      </div>
+      {message ? (
+        <p className="waitlist-error" role="alert">
+          {message}
+        </p>
+      ) : (
+        <p className="waitlist-hint">No spam. Launch updates only.</p>
+      )}
+    </form>
+  )
+}
 
 const appLooks = [
   {
@@ -345,12 +454,7 @@ function App() {
               <br />
               with your life.
             </h2>
-            <a
-              className="button button-light"
-              href="mailto:hello@sugatai.com?subject=Sugatai%20early%20access"
-            >
-              Join the early list <ArrowRight size={18} aria-hidden="true" />
-            </a>
+            <WaitlistForm />
           </div>
           <div className="early-phone" data-reveal style={reveal(0.15)}>
             <div className="phone">
@@ -394,6 +498,9 @@ function App() {
         </a>
         <p>See your look, before you wear it.</p>
         <div>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="/support">Support</a>
           <a href="mailto:hello@sugatai.com">Contact</a>
           <a href="https://instagram.com" aria-label="Sugatai on Instagram">
             <AtSign size={18} aria-hidden="true" />

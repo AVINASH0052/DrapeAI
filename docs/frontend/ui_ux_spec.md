@@ -1,4 +1,6 @@
-# DrapeAI -- UI/UX Specification
+# Sugatai -- UI/UX Specification (historical)
+
+> **Stale design spec.** Live tokens: `design-system/sugatai/MASTER.md`. Product name is Sugatai.
 
 Modern, minimal, fast. Inspired by the latest YC-backed consumer apps (Linear, Arc, Lemon Squeezy, Notion Mobile). No clutter. No gimmicks. Every screen earns its place.
 

@@ -1,229 +1,196 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../services/api';
+import {
+  Badge,
+  ConfirmModal,
+  EmptyState,
+  ErrorBanner,
+  LoadingBlock,
+  Pagination,
+  formatDate,
+} from '../components/ui';
 
-const PAGE_SIZE = 50;
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function ConfirmModal({ title, message, onConfirm, onCancel, danger }) {
-  return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>{title}</h3>
-        <p>{message}</p>
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={onCancel}>
-            Cancel
-          </button>
-          <button
-            className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
-            onClick={onConfirm}
-          >
-            Confirm
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+const PAGE_SIZE = 25;
 
 export default function Users() {
   const [users, setUsers] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [onboarding, setOnboarding] = useState('');
+  const [suspended, setSuspended] = useState('');
+  const [avatarStatus, setAvatarStatus] = useState('');
+  const [inactiveDays, setInactiveDays] = useState('');
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
-  const [hasMore, setHasMore] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null);
   const debounceTimer = useRef(null);
 
-  // Debounce search input
   useEffect(() => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
       setDebouncedSearch(search);
+      setOffset(0);
     }, 350);
     return () => clearTimeout(debounceTimer.current);
   }, [search]);
 
-  // Fetch users when search changes
-  const fetchUsers = useCallback(async (searchTerm, offset = 0, append = false) => {
+  const fetchUsers = useCallback(async () => {
     try {
-      if (!append) setLoading(true);
-      else setLoadingMore(true);
-
-      const data = await api.getUsers(searchTerm, PAGE_SIZE, offset);
-      const list = Array.isArray(data) ? data : data?.users || [];
-
-      if (append) {
-        setUsers((prev) => [...prev, ...list]);
-      } else {
-        setUsers(list);
-      }
-      setHasMore(list.length === PAGE_SIZE);
+      setLoading(true);
+      setError('');
+      const data = await api.getUsers({
+        search: debouncedSearch,
+        onboarding: onboarding || undefined,
+        suspended: suspended || undefined,
+        avatar_status: avatarStatus || undefined,
+        inactive_days: inactiveDays || undefined,
+        limit: PAGE_SIZE,
+        offset,
+      });
+      setUsers(data.users || []);
+      setTotal(data.total || 0);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
-  }, []);
+  }, [debouncedSearch, onboarding, suspended, avatarStatus, inactiveDays, offset]);
 
   useEffect(() => {
-    fetchUsers(debouncedSearch);
-  }, [debouncedSearch, fetchUsers]);
+    fetchUsers();
+  }, [fetchUsers]);
 
-  const handleLoadMore = () => {
-    fetchUsers(debouncedSearch, users.length, true);
-  };
-
-  const handleSuspend = async (user) => {
-    setActionLoading(user.id);
-    const newState = !user.is_suspended;
+  const runAction = async (id, fn) => {
+    setActionLoading(id);
     try {
-      await api.suspendUser(user.id, newState);
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === user.id ? { ...u, is_suspended: newState } : u
-        )
-      );
+      await fn();
+      await fetchUsers();
     } catch (err) {
       setError(err.message);
     } finally {
       setActionLoading(null);
+      setConfirmModal(null);
     }
-  };
-
-  const handleDelete = async (user) => {
-    setConfirmModal({
-      title: 'Delete User',
-      message: `Are you sure you want to permanently delete "${user.display_name || user.email}"? This action cannot be undone.`,
-      danger: true,
-      onConfirm: async () => {
-        setConfirmModal(null);
-        setActionLoading(user.id);
-        try {
-          await api.deleteUser(user.id);
-          setUsers((prev) => prev.filter((u) => u.id !== user.id));
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setActionLoading(null);
-        }
-      },
-    });
   };
 
   return (
     <div>
       <div className="page-header">
         <h1>Users</h1>
-        <p>Manage registered DrapeAI users</p>
+        <p>Search, filter, and manage every account lifecycle stage</p>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      <ErrorBanner message={error} />
 
-      <div className="table-container">
-        <div className="table-header">
-          <h2>All Users</h2>
-          <input
-            id="users-search"
-            className="search-input"
-            type="text"
-            placeholder="Search by name, email, or phone…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+      <div className="toolbar">
+        <input
+          className="search-input"
+          type="search"
+          placeholder="Search email, phone, name…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select value={onboarding} onChange={(e) => { setOnboarding(e.target.value); setOffset(0); }}>
+          <option value="">Onboarding: any</option>
+          <option value="done">Done</option>
+          <option value="pending">Pending</option>
+        </select>
+        <select value={suspended} onChange={(e) => { setSuspended(e.target.value); setOffset(0); }}>
+          <option value="">Status: any</option>
+          <option value="false">Active</option>
+          <option value="true">Suspended</option>
+        </select>
+        <select value={avatarStatus} onChange={(e) => { setAvatarStatus(e.target.value); setOffset(0); }}>
+          <option value="">Avatar: any</option>
+          <option value="missing">Missing</option>
+          <option value="queued">Queued</option>
+          <option value="processing">Processing</option>
+          <option value="ready">Ready</option>
+          <option value="failed">Failed</option>
+        </select>
+        <select value={inactiveDays} onChange={(e) => { setInactiveDays(e.target.value); setOffset(0); }}>
+          <option value="">Activity: any</option>
+          <option value="7">Inactive 7d+</option>
+          <option value="30">Inactive 30d+</option>
+          <option value="90">Inactive 90d+</option>
+        </select>
+      </div>
 
-        {loading ? (
-          <div className="loading-container">
-            <div className="spinner" />
-          </div>
-        ) : users.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">👥</div>
-            <p>No users found{search ? ` matching "${search}"` : ''}</p>
-          </div>
-        ) : (
-          <>
+      {loading ? (
+        <LoadingBlock />
+      ) : users.length === 0 ? (
+        <EmptyState title="No users match" message="Try clearing filters or widening search." />
+      ) : (
+        <>
+          <div className="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Email / Phone</th>
+                  <th>User</th>
                   <th>Items</th>
                   <th>Outfits</th>
-                  <th>Status</th>
-                  <th>Joined</th>
+                  <th>Onboarding</th>
+                  <th>Avatar</th>
+                  <th>Last login</th>
+                  <th>Flags</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
-                  <tr key={user.id}>
+                {users.map((u) => (
+                  <tr key={u.id}>
                     <td>
-                      <div style={{ fontWeight: 500 }}>
-                        {user.display_name || '—'}
-                        {user.is_admin && (
-                          <span
-                            className="badge badge-muted"
-                            style={{ marginLeft: 8, fontSize: '0.65rem' }}
-                          >
-                            ADMIN
-                          </span>
-                        )}
-                      </div>
+                      <Link to={`/users/${u.id}`} className="user-link">
+                        <div className="user-cell">
+                          <strong>{u.display_name || u.email || u.phone || u.id}</strong>
+                          <span>{u.email || u.phone || u.id}</span>
+                        </div>
+                      </Link>
+                    </td>
+                    <td>{u.item_count ?? 0}</td>
+                    <td>{u.outfit_count ?? 0}</td>
+                    <td>
+                      <Badge tone={u.onboarding_done ? 'success' : 'warning'}>
+                        {u.onboarding_done ? 'Done' : 'Pending'}
+                      </Badge>
                     </td>
                     <td>
-                      <div style={{ color: '#e5e7eb' }}>{user.email || '—'}</div>
-                      {user.phone && (
-                        <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>{user.phone}</div>
-                      )}
+                      <Badge tone={u.avatar_status === 'ready' ? 'success' : 'neutral'}>
+                        {u.avatar_status || 'missing'}
+                      </Badge>
                     </td>
-                    <td>{user.items_count ?? 0}</td>
-                    <td>{user.outfits_count ?? 0}</td>
-                    <td>
-                      {user.is_suspended ? (
-                        <span className="badge badge-danger">
-                          <span className="badge-dot" />
-                          Suspended
-                        </span>
-                      ) : (
-                        <span className="badge badge-success">
-                          <span className="badge-dot" />
-                          Active
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
-                      {formatDate(user.created_at)}
+                    <td>{formatDate(u.last_login_at)}</td>
+                    <td className="badge-row">
+                      {u.is_admin ? <Badge tone="accent">Admin</Badge> : null}
+                      {u.is_suspended ? <Badge tone="danger">Suspended</Badge> : null}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div className="row-actions">
+                        <Link className="btn btn-ghost btn-sm" to={`/users/${u.id}`}>
+                          Open
+                        </Link>
                         <button
-                          className={`btn btn-sm ${user.is_suspended ? 'btn-primary' : 'btn-warning'}`}
-                          disabled={actionLoading === user.id}
-                          onClick={() => handleSuspend(user)}
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          disabled={actionLoading === u.id}
+                          onClick={() =>
+                            setConfirmModal({
+                              title: u.is_suspended ? 'Unsuspend user?' : 'Suspend user?',
+                              message: u.is_suspended
+                                ? 'They will regain API access immediately.'
+                                : 'They will be blocked from using the app.',
+                              danger: !u.is_suspended,
+                              confirmLabel: u.is_suspended ? 'Unsuspend' : 'Suspend',
+                              onConfirm: () =>
+                                runAction(u.id, () => api.suspendUser(u.id, !u.is_suspended)),
+                            })
+                          }
                         >
-                          {user.is_suspended ? 'Unsuspend' : 'Suspend'}
-                        </button>
-                        <button
-                          className="btn btn-sm btn-danger"
-                          disabled={actionLoading === user.id}
-                          onClick={() => handleDelete(user)}
-                        >
-                          Delete
+                          {u.is_suspended ? 'Unsuspend' : 'Suspend'}
                         </button>
                       </div>
                     </td>
@@ -231,31 +198,26 @@ export default function Users() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <Pagination
+            offset={offset}
+            limit={PAGE_SIZE}
+            total={total}
+            onChange={setOffset}
+          />
+        </>
+      )}
 
-            {hasMore && (
-              <div className="load-more-container">
-                <button
-                  className="btn btn-ghost"
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? 'Loading…' : 'Load More'}
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {confirmModal && (
+      {confirmModal ? (
         <ConfirmModal
           title={confirmModal.title}
           message={confirmModal.message}
           danger={confirmModal.danger}
+          confirmLabel={confirmModal.confirmLabel}
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(null)}
         />
-      )}
+      ) : null}
     </div>
   );
 }

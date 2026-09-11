@@ -55,6 +55,7 @@ class WorkerSettings:
         "app.workers.tasks.process_upload",
         "app.workers.tasks.regenerate_embedding",
         "app.workers.tasks.process_try_on",
+        "app.workers.tasks.process_try_on_refine",
         "app.workers.tasks.process_external_try_on",
     ]
 

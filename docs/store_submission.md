@@ -1,4 +1,4 @@
-# DrapeAI -- Store Submission Guide
+# Sugatai -- Store Submission Guide
 
 Step-by-step for publishing to Google Play Store and Apple App Store. Covers signing, building, screenshots, listing copy, review guidelines, and common rejection reasons.
 
@@ -27,7 +27,7 @@ Complete ALL of these before submitting to either store:
   - [ ] Small phone (5" -- e.g., iPhone SE, Pixel 4a)
   - [ ] Medium phone (6.1" -- e.g., iPhone 15, Pixel 8)
   - [ ] Large phone (6.7" -- e.g., iPhone 15 Pro Max, Pixel 8 Pro)
-- [ ] Camera permission request shows clear rationale ("DrapeAI needs camera access to photograph your clothes")
+- [ ] Camera permission request shows clear rationale ("Sugatai needs camera access to photograph your clothes")
 - [ ] Photo library permission request shows clear rationale
 - [ ] Body-photo setup explains avatar processing, retention, replace, and delete controls
 - [ ] Notification permission request (iOS: asked at appropriate moment, not on first launch)
@@ -36,8 +36,8 @@ Complete ALL of these before submitting to either store:
 - [ ] No test data, lorem ipsum, or placeholder images
 - [ ] Version number set: `1.0.0+1` in `pubspec.yaml`
 - [ ] Bundle ID set:
-  - Android: `app.drapeai.android`
-  - iOS: `app.drapeai.ios`
+  - Android: `com.sugatai.sugatai`
+  - iOS: `com.sugatai.sugatai`
 - [ ] Privacy policy URL live and accessible
 - [ ] Terms of service URL live and accessible
 - [ ] Firebase Analytics (or alternative) integrated for crash reporting
@@ -134,7 +134,7 @@ flutter build appbundle --release
 ### 2.4 Play Console Setup
 
 1. **Create app:** Play Console > Create app
-   - App name: "DrapeAI - AI Outfit Assistant"
+   - App name: "Sugatai"
    - Default language: English (India)
    - App type: App (not Game)
    - Free or paid: Free
@@ -156,7 +156,7 @@ flutter build appbundle --release
    - Not designed for children under 13
 
 5. **App content:**
-   - Privacy policy URL: `https://drapeai.app/privacy`
+   - Privacy policy URL: `https://sugatai.com/privacy`
    - Ads: No
    - Government apps: No
 
@@ -199,7 +199,7 @@ flutter build appbundle --release
 2. Select "Runner" target
 3. Go to "Signing & Capabilities" tab
 4. Team: Select your Apple Developer account
-5. Bundle Identifier: `app.drapeai.ios`
+5. Bundle Identifier: `com.sugatai.sugatai`
 6. Check "Automatically manage signing"
 7. Xcode will create:
    - Development certificate
@@ -211,7 +211,7 @@ flutter build appbundle --release
 ```bash
 # Manual steps (rarely needed)
 # 1. Apple Developer > Certificates > Create distribution certificate
-# 2. Apple Developer > Identifiers > Create App ID: app.drapeai.ios
+# 2. Apple Developer > Identifiers > Create App ID: com.sugatai.sugatai
 # 3. Apple Developer > Profiles > Create distribution profile
 # 4. Download and double-click to install
 ```
@@ -223,11 +223,11 @@ In `app/ios/Runner/Info.plist`, ensure these keys exist:
 ```xml
 <!-- Camera access -->
 <key>NSCameraUsageDescription</key>
-<string>DrapeAI needs camera access to photograph your clothes for wardrobe management.</string>
+<string>Sugatai uses the camera to capture clothing items for your wardrobe.</string>
 
 <!-- Photo library access -->
 <key>NSPhotoLibraryUsageDescription</key>
-<string>DrapeAI needs photo library access to import clothing photos from your gallery.</string>
+<string>Sugatai needs photo library access so you can add existing photos of your clothing to your wardrobe.</string>
 
 <!-- Push notifications -->
 <!-- Handled by Firebase SDK, but ensure Push Notifications capability is added in Xcode -->
@@ -266,10 +266,10 @@ In Xcode:
 1. Go to https://appstoreconnect.apple.com
 2. My Apps > "+" > New App
    - Platform: iOS
-   - Name: "DrapeAI - AI Outfit Assistant"
+   - Name: "Sugatai"
    - Primary language: English
-   - Bundle ID: Select `app.drapeai.ios`
-   - SKU: `drapeai-ios-001`
+   - Bundle ID: Select `com.sugatai.sugatai`
+   - SKU: `sugatai-ios-001`
 
 3. **App Information:**
    - Category: Lifestyle
@@ -282,7 +282,7 @@ In Xcode:
    - Availability: All countries (or select India only for initial launch)
 
 5. **App Privacy:**
-   - Privacy policy URL: `https://drapeai.app/privacy`
+   - Privacy policy URL: `https://sugatai.com/privacy`
    - Data types collected:
      - Contact Info: Phone number (for account creation)
      - Photos: User clothing photos (for app functionality)
@@ -295,8 +295,8 @@ In Xcode:
    - Screenshots: See section 5
    - Description: See section 4
    - Keywords: "outfit, wardrobe, AI stylist, fashion, clothes, ethnic wear, kurta, saree"
-   - Support URL: `https://drapeai.app/support`
-   - Marketing URL: `https://drapeai.app`
+   - Support URL: `https://sugatai.com/support`
+   - Marketing URL: `https://sugatai.com`
 
 7. **Build:**
    - Select the uploaded build from Xcode
@@ -324,7 +324,7 @@ Before production submission:
 
 ### App Name
 ```
-DrapeAI - AI Outfit Assistant
+Sugatai
 ```
 
 ### Short Description (Google Play, 80 chars)
@@ -335,10 +335,10 @@ AI stylist that creates daily outfits from your own wardrobe. Built for India.
 ### Full Description
 
 ```
-DrapeAI is your personal AI stylist. Photograph your clothes, and the AI creates
+Sugatai is your personal AI stylist. Photograph your clothes, and the AI creates
 outfit combinations you never thought of -- including ethnic, fusion, and western looks.
 
-WHAT DRAPEAI DOES
+WHAT SUGATAI DOES
 
 Upload your clothes
 Snap a photo of each item. AI removes the background and tags it automatically --
@@ -346,7 +346,7 @@ category, color, fabric, style, formality. Works with kurtas, sarees, t-shirts,
 jeans, and everything in between.
 
 Get AI outfit recommendations
-Every day, DrapeAI suggests 3 outfits from YOUR wardrobe. Weather-aware.
+Every day, Sugatai suggests 3 outfits from YOUR wardrobe. Weather-aware.
 Occasion-based: casual, work, party, date, festive. Thumbs up or down to teach
 the AI your taste.
 
@@ -366,7 +366,7 @@ does not. No other app does this.
 
 Weather-aware for Indian climates -- from Mumbai monsoons to Delhi winters.
 
-WHY DRAPEAI
+WHY SUGATAI
 
 - Uses what you ALREADY own. No shopping required.
 - AI gets smarter with your feedback.
@@ -381,7 +381,7 @@ COMING SOON
 - Trip packing planner
 - Import from Myntra and Ajio purchase history
 
-Download DrapeAI and find out what your wardrobe can really do.
+Download Sugatai and find out what your wardrobe can really do.
 ```
 
 ### Keywords (App Store, comma-separated, 100 char limit)
@@ -438,7 +438,17 @@ outfit,wardrobe,AI stylist,fashion,clothes,ethnic,kurta,saree,daily outfit,style
 
 ### Privacy Policy (required by both stores)
 
-Host at `https://drapeai.app/privacy`. Must cover:
+Host at `https://www.sugatai.com/privacy` (also `https://sugatai.com/privacy`). Must cover:
+
+### Reviewer test account
+
+Give App Store / Play review a real Firebase account (phone, Google, or Apple) that already completed onboarding and has a small wardrobe plus a body photo. Do not ship an undocumented `test-token` bypass in release builds. Privacy, terms, and support URLs:
+
+- https://www.sugatai.com/privacy
+- https://www.sugatai.com/terms
+- https://www.sugatai.com/support
+
+The privacy page must cover:
 
 1. **What data we collect:**
    - Phone number (for authentication via OTP)
@@ -457,7 +467,7 @@ Host at `https://drapeai.app/privacy`. Must cover:
    - Firebase (Google) for authentication and push notifications
    - OpenAI for AI image analysis (images sent to OpenAI API)
    - Cloudflare for image storage
-   - OpenWeatherMap for weather data
+   - Open-Meteo for weather data
 
 4. **Data retention:**
    - Account data kept until user deletes account
@@ -467,14 +477,14 @@ Host at `https://drapeai.app/privacy`. Must cover:
 5. **User rights:**
    - Right to delete account and all data
    - Right to export wardrobe data (future feature)
-   - Contact: privacy@drapeai.app
+   - Contact: privacy@sugatai.com
 
 6. **Children's privacy:**
    - Not intended for users under 13
 
 ### Terms of Service
 
-Host at `https://drapeai.app/terms`. Standard terms covering:
+Host at `https://sugatai.com/terms`. Standard terms covering:
 - Acceptable use
 - Intellectual property (user owns their photos)
 - Limitation of liability
@@ -485,10 +495,10 @@ Host at `https://drapeai.app/terms`. Standard terms covering:
 Simplest: create a single-page site on Cloudflare Pages or GitHub Pages.
 
 ```
-drapeai.app/          -- landing page (can be minimal at launch)
-drapeai.app/privacy   -- privacy policy
-drapeai.app/terms     -- terms of service
-drapeai.app/support   -- contact email or form
+sugatai.com/          -- landing page (can be minimal at launch)
+sugatai.com/privacy   -- privacy policy
+sugatai.com/terms     -- terms of service
+sugatai.com/support   -- contact email or form
 ```
 
 ---
@@ -523,7 +533,7 @@ Test account:
 Phone: +91 9999900000
 OTP: 123456 (test mode)
 
-Or use Google Sign-In with: test@drapeai.app / password123
+Or use Google Sign-In with: test@sugatai.com / password123
 
 The app requires uploading clothing photos. We have included a "Demo wardrobe"
 feature (accessible from the welcome screen) that loads 20 pre-tagged items so

@@ -5,7 +5,7 @@ the expected distribution given their occasions + lifestyle + climate, and asks
 the heavy-reasoning model (Claude Sonnet by default) for prioritized
 recommendations.
 
-Results cached for 7 days per user via a simple analytics_daily metric key.
+Computed on each request (no cache layer yet).
 """
 
 import json

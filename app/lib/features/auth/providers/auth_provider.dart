@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -13,7 +14,6 @@ enum AuthStatus {
   loading,
   authenticated,
   unauthenticated,
-  onboardingNeeded,
   bodySetupNeeded,
 }
 
@@ -56,15 +56,24 @@ class AuthStatusNotifier extends StateNotifier<AuthStatus> {
       } else {
         state = AuthStatus.bodySetupNeeded;
       }
-    } catch (_) {
-      // If backend is unreachable but Firebase user exists, default to
-      // body setup so the user isn't kicked back to the login screen.
-      final repo = _ref.read(authRepositoryProvider);
-      if (repo.currentUser != null) {
-        state = AuthStatus.bodySetupNeeded;
-      } else {
+    } on DioException catch (error) {
+      // Auth rejected by API — do not continue into body setup with a bad token.
+      if (error.response?.statusCode == 401 ||
+          error.response?.statusCode == 403) {
         state = AuthStatus.unauthenticated;
+        rethrow;
       }
+      // Transient/network failure with an existing Firebase session: keep the
+      // session and let the user retry setup instead of bouncing to login.
+      final repo = _ref.read(authRepositoryProvider);
+      state = repo.currentUser != null
+          ? AuthStatus.bodySetupNeeded
+          : AuthStatus.unauthenticated;
+    } catch (_) {
+      final repo = _ref.read(authRepositoryProvider);
+      state = repo.currentUser != null
+          ? AuthStatus.bodySetupNeeded
+          : AuthStatus.unauthenticated;
     }
   }
 

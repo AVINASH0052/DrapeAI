@@ -1,6 +1,8 @@
-# DrapeAI Backend -- Documentation Index
+# Sugatai Backend -- Documentation Index
 
-> FastAPI (Python 3.11) + PostgreSQL + pgvector + GPT-4o + Cloudflare R2
+> **Historical build-order notes.** Live layout: [../services/BACKEND.md](../services/BACKEND.md). AI is a multi-provider cascade, not GPT-4o-only. Embeddings are 1024-dim (`nvidia/nv-embedqa-e5-v5` primary).
+>
+> FastAPI (Python 3.11) + PostgreSQL + pgvector + Cloudflare R2
 
 ---
 

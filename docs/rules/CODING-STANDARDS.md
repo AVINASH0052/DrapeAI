@@ -1,4 +1,4 @@
-# DrapeAI — Coding Standards
+# Sugatai — Coding Standards
 
 Rules for all code in this monorepo. Read before writing code.
 

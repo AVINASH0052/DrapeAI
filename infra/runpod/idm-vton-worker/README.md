@@ -110,7 +110,7 @@ Plus diffusion weights from the project README / HF.
 Image is based on `fonixteam/idm-vton:pod-v1` (prebuilt IDM-VTON + deps) plus our RunPod handler.
 
 ```bash
-cd /Users/avinash/Desktop/DrapeAI/infra/runpod/idm-vton-worker
+cd /Users/avinash/Desktop/Sugatai/infra/runpod/idm-vton-worker
 
 # Local tag (already built in this session as drapeai/idm-vton-worker:v1)
 docker build --platform linux/amd64 -t YOURUSER/idm-vton-worker:v1 .
@@ -189,8 +189,8 @@ export RUNPOD_API_KEY="rp_..."
 export RUNPOD_ENDPOINT_ID="your-endpoint-id"
 
 # Encode sample images
-PERSON_B64=$(base64 -i /Users/avinash/Desktop/DrapeAI/tmp_tryon_test/female_person.jpg | tr -d '\n')
-GARMENT_B64=$(base64 -i /Users/avinash/Desktop/DrapeAI/tmp_tryon_test/female_top.jpg | tr -d '\n')
+PERSON_B64=$(base64 -i /Users/avinash/Desktop/Sugatai/tmp_tryon_test/female_person.jpg | tr -d '\n')
+GARMENT_B64=$(base64 -i /Users/avinash/Desktop/Sugatai/tmp_tryon_test/female_top.jpg | tr -d '\n')
 
 curl -sS "https://api.runpod.ai/v2/${RUNPOD_ENDPOINT_ID}/runsync" \
   -H "Authorization: Bearer ${RUNPOD_API_KEY}" \

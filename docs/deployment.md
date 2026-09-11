@@ -1,11 +1,12 @@
 # Deployment cheat sheet
 
-> **Last updated:** 2026-07-14  
+> **Last updated:** 2026-09-11  
 > Long form: [deployment.md](deployment.md) · Store: [store_submission.md](store_submission.md)
 
 ## CI
 
-GitHub Actions under `.github/workflows/` — tests + deploy as configured on the default branch.
+- `.github/workflows/ci.yml` — API pytest (Postgres + Redis), web build, admin build, `flutter analyze` + `flutter test`.
+- `.github/workflows/deploy.yml` — manual deploy of a **tested SHA or tag**. It refuses to ship a commit that has no successful CI run, checks out that SHA on the server (not `git pull main`), and waits on `/ready`.
 
 ## Containers
 
@@ -24,7 +25,8 @@ GitHub Actions under `.github/workflows/` — tests + deploy as configured on th
 - [ ] R2 + Firebase configured
 - [ ] Try-on providers keyed; RunPod optional
 - [ ] TLS via Nginx / edge
-- [ ] Health endpoint monitored
+- [ ] `/health` (liveness) and `/ready` (Postgres, Redis, storage, providers) monitored
+- [ ] R2 bucket private; API returns signed image URLs
 
 ## RunPod worker release
 

@@ -1,6 +1,7 @@
 """FastAPI application entry point."""
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -8,16 +9,21 @@ import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import settings
+from app.config import settings, validate_boot_settings
 from app.database.pool import init_pool, close_pool
 from app.services.redis_client import init_redis, close_redis
-from app.routes import admin, analytics, auth, avatar, calendar, health, items, lookbooks, notifications, outfits, push, stats, try_on, user, wardrobe, weather_route
+from app.routes import admin, analytics, auth, avatar, calendar, health, items, lookbooks, notifications, outfits, push, stats, try_on, user, waitlist, wardrobe, weather_route
 
 logging.basicConfig(
     level=settings.log_level,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+validate_boot_settings(
+    settings,
+    require_production=os.getenv("REQUIRE_PRODUCTION") in ("1", "true", "True"),
+)
 
 if settings.environment == "production" and settings.sentry_dsn:
     sentry_sdk.init(dsn=settings.sentry_dsn, traces_sample_rate=0.1)
@@ -26,11 +32,17 @@ if settings.environment == "production" and settings.sentry_dsn:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_pool()
-    # Redis (rate limiter, task queue broker, caching)
+    # Redis is required in production (rate limits + ARQ). Development may
+    # keep running with the in-memory limiter when Redis is down.
     try:
         await init_redis()
     except Exception as e:
-        logger.warning(f"Redis unavailable — falling back to in-memory rate limiting: {e}")
+        if settings.environment == "production":
+            raise RuntimeError(
+                "Redis is required in production. Rate limits and the job "
+                "queue cannot degrade to in-memory on a multi-worker host."
+            ) from e
+        logger.warning("Redis unavailable — in-memory rate limiting (development only)")
     logger.info("DrapeAI backend started")
     yield
     from app.services.ai_provider import close_http_client
@@ -53,13 +65,13 @@ app.add_middleware(
     allow_origins=(
         ["*"]
         if settings.environment == "development"
-        else ["https://drapeai.app"]
+        else settings.cors_origin_list
     ),
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Rate limiting (Redis-backed, falls back to in-memory)
+# Rate limiting (Redis in production; in-memory fallback only in development)
 from app.middleware.rate_limiter import RateLimitMiddleware
 
 app.add_middleware(RateLimitMiddleware)
@@ -94,3 +106,4 @@ app.include_router(notifications.router)
 app.include_router(calendar.router)
 app.include_router(analytics.router)
 app.include_router(try_on.router)
+app.include_router(waitlist.router)

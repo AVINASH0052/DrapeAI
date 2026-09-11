@@ -3,22 +3,105 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sugatai · Modern Wardrobe AI</title>
     <meta
       name="description"
       content="Sugatai is a modern AI wardrobe stylist. Global design, Indian context. Dress from what you own."
     />
+    <meta
+      name="keywords"
+      content="Sugatai, AI stylist, wardrobe app, virtual try-on, outfit ideas, Indian fashion, closet organizer"
+    />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#fffaf5" />
+    <link rel="canonical" href="https://www.sugatai.com/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sugatai" />
+    <meta property="og:url" content="https://www.sugatai.com/" />
     <meta property="og:title" content="Sugatai · Modern wardrobe AI" />
     <meta
       property="og:description"
       content="Global style. Indian context. Looks from the clothes you already own."
     />
-    <title>Sugatai · Modern Wardrobe AI</title>
+    <meta
+      property="og:image"
+      content="https://www.sugatai.com/brand/sugatai-wordmark.png"
+    />
+    <meta property="og:locale" content="en_IN" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sugatai · Modern wardrobe AI" />
+    <meta
+      name="twitter:description"
+      content="Global style. Indian context. Looks from the clothes you already own."
+    />
+    <meta
+      name="twitter:image"
+      content="https://www.sugatai.com/brand/sugatai-wordmark.png"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://www.sugatai.com/#organization",
+            "name": "Sugatai",
+            "url": "https://www.sugatai.com/",
+            "logo": "https://www.sugatai.com/brand/apple-touch-icon.png",
+            "email": "hello@sugatai.com",
+            "sameAs": []
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://www.sugatai.com/#website",
+            "url": "https://www.sugatai.com/",
+            "name": "Sugatai",
+            "description": "Modern AI wardrobe stylist. Global design, Indian context.",
+            "publisher": {
+              "@id": "https://www.sugatai.com/#organization"
+            },
+            "inLanguage": "en-IN"
+          },
+          {
+            "@type": "WebPage",
+            "@id": "https://www.sugatai.com/#webpage",
+            "url": "https://www.sugatai.com/",
+            "name": "Sugatai · Modern Wardrobe AI",
+            "isPartOf": {
+              "@id": "https://www.sugatai.com/#website"
+            },
+            "about": {
+              "@id": "https://www.sugatai.com/#organization"
+            },
+            "description": "Sugatai is a modern AI wardrobe stylist. Global design, Indian context. Dress from what you own."
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <!-- Crawlable fallback for search engines before JS loads -->
+    <noscript>
+      <main>
+        <h1>Sugatai</h1>
+        <p>Your clothes. Your look.</p>
+        <p>
+          Modern AI wardrobe stylist. Global design, Indian context. Dress from
+          what you own.
+        </p>
+        <p>
+          <a href="https://www.sugatai.com/#early-access"
+            >Join the early list</a
+          >
+        </p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

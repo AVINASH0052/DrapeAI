@@ -1,5 +1,7 @@
-# DrapeAI Frontend -- Documentation Index
+# Sugatai Frontend -- Documentation Index
 
+> **Historical build-order notes.** Live layout and brand: [../services/FRONTEND.md](../services/FRONTEND.md) and `app/README.md`. Product name is **Sugatai** (`com.sugatai.sugatai`).
+>
 > Flutter (Dart) + Riverpod + Dio + GoRouter + Firebase Auth
 
 ---

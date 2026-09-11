@@ -35,11 +35,12 @@ async def upload_item(
     )
 
     result = await accept_upload(user.id, file_bytes, image.content_type)
-    enqueued = await enqueue_upload_job(result["id"], user.id)
-    if not enqueued:
-        background_tasks.add_task(
-            run_upload_pipeline_standalone, result["id"], user.id
-        )
+    for piece in result.get("items") or [result]:
+        enqueued = await enqueue_upload_job(piece["id"], user.id)
+        if not enqueued:
+            background_tasks.add_task(
+                run_upload_pipeline_standalone, piece["id"], user.id
+            )
     return result
 
 
@@ -49,7 +50,7 @@ async def upload_items_batch(
     images: list[UploadFile] = File(...),
     user: User = Depends(get_current_user),
 ):
-    """Upload multiple clothing items (max 10). Analysis runs in the background."""
+    """Upload multiple clothing photos (max 10). Each photo may become several items."""
     if not images:
         raise HTTPException(status_code=400, detail="No images provided")
     if len(images) > 10:
@@ -63,24 +64,28 @@ async def upload_items_batch(
 
     results = []
     errors = []
+    total_items = 0
     for i, image in enumerate(images):
         try:
             file_bytes = await image.read()
             validate_image(image.content_type, file_bytes)
             result = await accept_upload(user.id, file_bytes, image.content_type)
-            enqueued = await enqueue_upload_job(result["id"], user.id)
-            if not enqueued:
-                background_tasks.add_task(
-                    run_upload_pipeline_standalone, result["id"], user.id
-                )
-            results.append(result)
+            pieces = result.get("items") or [result]
+            total_items += len(pieces)
+            for piece in pieces:
+                enqueued = await enqueue_upload_job(piece["id"], user.id)
+                if not enqueued:
+                    background_tasks.add_task(
+                        run_upload_pipeline_standalone, piece["id"], user.id
+                    )
+            results.extend(pieces)
         except HTTPException as e:
             errors.append({"index": i, "detail": e.detail})
         except Exception as e:
             errors.append({"index": i, "detail": str(e)})
 
     return {
-        "uploaded": len(results),
+        "uploaded": total_items,
         "failed": len(errors),
         "items": results,
         "errors": errors,

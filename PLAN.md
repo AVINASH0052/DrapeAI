@@ -1,4 +1,6 @@
-# DrapeAI -- Master Plan
+# Master Plan (historical)
+
+> **Partially obsolete.** Product ships as **Sugatai** (repo folder: `Sugatai`). Calendar, analytics, try-on, and avatar are live — see [docs/architecture/OVERVIEW.md](docs/architecture/OVERVIEW.md). Keep this file for early product thesis only. Canonical docs: [docs/README.md](docs/README.md).
 
 > AI Outfit Assistant for India. Flutter (Android + iOS) + FastAPI + PostgreSQL. Solo build.
 

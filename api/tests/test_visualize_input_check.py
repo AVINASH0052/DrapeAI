@@ -134,7 +134,7 @@ async def test_visualize_fails_on_bad_garment_reference(
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "failed"
-    assert "back of the blouse" in data["error"]
+    assert data["error"] == "try_on_failed"
     # Failed pre-flight checks shouldn't burn the daily quota either.
     assert data["remaining"] == data["limit"]
 

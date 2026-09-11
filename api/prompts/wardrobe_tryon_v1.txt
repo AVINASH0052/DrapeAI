@@ -1,12 +1,18 @@
-Dress the person in image 0 using the clothing garments shown in the reference images.
+Virtual try-on edit of IMAGE 0 (the person photo).
 
-Wardrobe details (from user's closet):
+Apply ONLY these wardrobe reference garments (later images):
 {outfit_metadata_lines}
 
+CRITICAL — partial outfit edit:
+- Change ONLY the garment types listed above (and shown in the reference images).
+- Keep every other clothing item from IMAGE 0 exactly as-is: same pants/trousers, shoes, belt, watch, jewelry, bag, outer layers, and any garment type not listed above.
+- Do NOT invent, redesign, recolor, or swap unlisted garments. If only a top/shirt is provided, the person's original bottoms and footwear must stay identical.
+- Do NOT turn a shirt try-on into a full outfit makeover.
+
 Requirements:
-- Preserve face, hairstyle, skin tone, body shape, and pose exactly
-- Replace only the clothing
-- Match garment colors, patterns, and silhouette from reference images
-- Photorealistic full-body fashion photo, natural lighting, neutral background
-- Indian ethnic wear: respect drape and garment structure (saree, kurta, lehenga)
-Do not change identity. Do not add text or watermarks.
+- Preserve face, hairstyle, skin tone, body shape, and identity exactly
+- Match provided garment colors, patterns, fabric texture, and silhouette precisely
+- Photorealistic photograph, sharp focus, natural skin detail
+- Indian ethnic wear: respect drape and garment structure (saree, kurta, lehenga, sherwani)
+- Clean professional lighting; no text, logos, or watermarks
+{preserve_instructions}

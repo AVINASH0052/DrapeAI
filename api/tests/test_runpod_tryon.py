@@ -136,12 +136,15 @@ async def test_generate_tryon_runpod_primary():
 
     with patch("app.services.image_gen_provider._route_tryon", return_value=[("runpod", "idm-vton")]), \
          patch("app.services.image_gen_provider._provider_configured", return_value=True), \
-         patch("app.services.image_gen_provider._load_item_bytes", new_callable=AsyncMock) as mock_load, \
+         patch(
+             "app.services.image_gen_provider._load_item_bytes_with_meta",
+             new_callable=AsyncMock,
+         ) as mock_load, \
          patch("app.services.image_gen_provider._runpod_tryon", new_callable=AsyncMock) as mock_rp, \
          patch("app.services.image_gen_provider._track_tryon_cost", new_callable=AsyncMock), \
          patch("app.services.image_gen_provider.settings") as mock_settings:
         mock_settings.tryon_prompt_version = "wardrobe_v1"
-        mock_load.return_value = [fake_png]
+        mock_load.return_value = [(items[0], fake_png)]
         mock_rp.return_value = fake_png
         result = await generate_tryon_image(person, items)
 

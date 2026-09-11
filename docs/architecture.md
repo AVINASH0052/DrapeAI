@@ -1,6 +1,8 @@
-# DrapeAI -- System Architecture
+# System Architecture
 
-> Last updated: April 2026
+> **Last updated:** 2026-08-15 (partial sync)  
+> **Product:** Sugatai · **Repo folder:** Sugatai  
+> Prefer [architecture/OVERVIEW.md](architecture/OVERVIEW.md) for the current package map.
 
 ---
 
@@ -53,7 +55,7 @@
 
 External APIs:
   +------------------+    +------------------+    +------------------+
-  | OpenWeatherMap   |    | Firebase Auth    |    | Firebase Cloud   |
+  | Open-Meteo       |    | Firebase Auth    |    | Firebase Cloud   |
   | (weather data)   |    | (OTP + Google)   |    | Messaging (push) |
   +------------------+    +------------------+    +------------------+
 ```
@@ -207,8 +209,9 @@ Cloudflare R2
 
 Cloudflare DNS
   |
-  +-- api.drapeai.app --> Hetzner VPS IP
-  +-- images.drapeai.app --> R2 custom domain (optional, or use signed URLs)
+  +-- api.sugatai.com --> Cloudflare tunnel / origin → FastAPI
+  +-- app.sugatai.com/workadmin/ --> Admin Worker
+  +-- R2 public URL or /uploads (dev) for images
 
 Firebase
   |
@@ -225,7 +228,7 @@ Every request from the Flutter app follows this path:
 
 ```
 1. Flutter: Dio sends HTTPS request with Authorization: Bearer <firebase_jwt>
-2. Cloudflare DNS resolves api.drapeai.app
+2. Cloudflare DNS resolves api.sugatai.com
 3. Nginx terminates TLS, proxies to backend:8000
 4. FastAPI middleware: CORS check
 5. FastAPI dependency: get_current_user()
@@ -339,7 +342,7 @@ Detailed in [AI Pipeline](ai_pipeline.md). Summary:
 | Firebase JWT public keys | In-memory (Python dict) | 1 hour | Refetch on expiry |
 | User preferences | In-memory (per-request from DB) | None (always fresh) | -- |
 
-No Redis. PostgreSQL handles all caching at this scale. Add Redis only if request latency becomes an issue past 10,000 users.
+Redis is used in production for rate limiting and the ARQ worker broker. Local `docker-compose.dev.yml` may omit Redis; the API falls back to in-memory rate limiting.
 
 ---
 

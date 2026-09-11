@@ -1,7 +1,11 @@
 """Item models."""
 
-from pydantic import BaseModel, Field
 from datetime import datetime
+
+from pydantic import BaseModel, Field, field_validator
+
+_GARMENT_SIZES = {"xs", "s", "m", "l", "xl", "xxl", "free"}
+_GARMENT_FITS = {"slim", "regular", "relaxed", "baggy", "oversized"}
 
 
 class ItemTags(BaseModel):
@@ -54,3 +58,25 @@ class ItemUpdate(BaseModel):
     ethnic_flag: bool | None = None
     notes: str | None = Field(default=None, max_length=500)
     purchase_price: int | None = None  # paise (INR x 100)
+    garment_size: str | None = Field(default=None, max_length=16)
+    garment_fit: str | None = Field(default=None, max_length=16)
+
+    @field_validator("garment_size")
+    @classmethod
+    def _size(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        size = value.strip().lower()
+        if size not in _GARMENT_SIZES:
+            raise ValueError("Size must be xs, s, m, l, xl, xxl, or free")
+        return size
+
+    @field_validator("garment_fit")
+    @classmethod
+    def _fit(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        fit = value.strip().lower()
+        if fit not in _GARMENT_FITS:
+            raise ValueError("Fit must be slim, regular, relaxed, baggy, or oversized")
+        return fit

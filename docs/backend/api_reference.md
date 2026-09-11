@@ -1,8 +1,12 @@
-# DrapeAI -- API Reference
+# Sugatai API Reference
 
-All endpoints served by the FastAPI backend at `https://api.drapeai.app`.
+> **Last updated:** 2026-08-09  
+> **Source of truth for routes:** `api/app/main.py` + `api/app/routes/`.  
+> Sections below may lag; prefer OpenAPI at `http://localhost:8000/docs` in development.
 
-Every request (except `/health` and `/auth/*`) requires `Authorization: Bearer <firebase_jwt>`.
+Product API origin: `https://api.sugatai.com` (repo folder: Sugatai).
+
+Every request (except `/health`, `/waitlist`, and public auth helpers) requires `Authorization: Bearer <firebase_jwt>`.
 
 ---
 
@@ -11,7 +15,11 @@ Every request (except `/health` and `/auth/*`) requires `Authorization: Bearer <
 | Environment | URL |
 |---|---|
 | Development | `http://localhost:8000` |
-| Production | `https://api.drapeai.app` |
+| Production | `https://api.sugatai.com` |
+
+### Route modules (live)
+
+`health`, `auth`, `user`, `avatar`, `items`, `wardrobe`, `outfits`, `lookbooks`, `try_on`, `calendar`, `analytics`, `notifications`, `push`, `stats`, `weather_route`, `waitlist`, `admin`.
 
 ---
 
@@ -48,10 +56,16 @@ No auth required. Used by monitoring and load balancers.
 ```json
 {
   "status": "ok",
-  "version": "1.0.0",
-  "db": "connected"
+  "service": "drapeai-api",
+  "uptime_seconds": 12,
+  "database": {
+    "connected": true,
+    "version": "PostgreSQL 16.x"
+  }
 }
 ```
+
+`service` is an infra identifier (`drapeai-api`); the product name is Sugatai.
 
 ---
 
@@ -247,10 +261,12 @@ Returns current preferences.
 
 ### POST /items/upload
 
-Accept a clothing item after background removal. AI tagging and embedding run
-asynchronously (ARQ worker when Redis is available, otherwise FastAPI
-`BackgroundTasks`). The cleaned item appears in the closet with
-`processing_status` of `queued` / `processing` until tagging finishes.
+Accept a clothing photo and run a full Gemini wardrobe intake: detect every
+garment, extract each as a clean product shot, then tag each piece. A person
+wearing a t-shirt and pants becomes two ready wardrobe items — each garment
+alone, no person. Flat-lay / detect-miss photos fall back to whole-image
+background removal + Gemini tag. Embedding may still finish asynchronously.
+Successful items return with `processing_status: ready` and filled tags.
 
 **Request:** `multipart/form-data`
 - `image` (required): JPEG, PNG, or WebP. Max 10 MB.
@@ -258,10 +274,28 @@ asynchronously (ARQ worker when Redis is available, otherwise FastAPI
 **Response 201:**
 ```json
 {
-  "id": "uuid",
+  "id": "uuid-of-first-piece",
   "image_url": "/uploads/users/uid/items/iid.png",
   "status": "processing",
   "processing_status": "queued",
+  "uploaded": 2,
+  "split": true,
+  "items": [
+    {
+      "id": "uuid-top",
+      "image_url": "/uploads/users/uid/items/top.png",
+      "status": "processing",
+      "processing_status": "queued",
+      "category": "top"
+    },
+    {
+      "id": "uuid-bottom",
+      "image_url": "/uploads/users/uid/items/bottom.png",
+      "status": "processing",
+      "processing_status": "queued",
+      "category": "bottom"
+    }
+  ],
   "tags": {
     "category": "top",
     "sub_category": "processing",

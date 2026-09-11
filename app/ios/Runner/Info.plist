@@ -73,16 +73,14 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.923334398143-opi7obokm2k0m8flotic5ces8s900s88</string>
+				<string>com.googleusercontent.apps.940704944663-ns3au74e3gentd17g5dr68vafluo3ei3</string>
 			</array>
 		</dict>
 	</array>
 	<key>GIDClientID</key>
-	<string>923334398143-opi7obokm2k0m8flotic5ces8s900s88.apps.googleusercontent.com</string>
+	<string>940704944663-ns3au74e3gentd17g5dr68vafluo3ei3.apps.googleusercontent.com</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
@@ -92,13 +90,19 @@
 	<array>
 		<string>_http._tcp</string>
 	</array>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Drape.ai uses the camera to capture clothing items for your wardrobe.</string>
+	<string>Sugatai uses the camera to capture clothing items for your wardrobe.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Drape.ai needs photo library access so you can add existing photos of your clothing to your wardrobe.</string>
+	<string>Sugatai needs photo library access so you can add existing photos of your clothing to your wardrobe.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Drape.ai can save outfit images to your photo library.</string>
+	<string>Sugatai can save outfit images to your photo library.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Drape.ai uses the microphone for voice input in outfit chat.</string>
+	<string>Sugatai uses the microphone for voice input in outfit chat.</string>
 </dict>
 </plist>

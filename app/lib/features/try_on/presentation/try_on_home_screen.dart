@@ -33,8 +33,8 @@ class _TryOnHomeScreenState extends ConsumerState<TryOnHomeScreen> {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 1200,
-      imageQuality: 85,
+      maxWidth: 2400,
+      imageQuality: 92,
     );
     if (picked == null) return;
     setState(() {

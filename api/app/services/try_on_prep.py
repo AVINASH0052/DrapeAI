@@ -40,7 +40,17 @@ def sort_items_for_tryon(items: list[dict]) -> list[dict]:
     )
 
 
-def resize_max_edge(image_bytes: bytes, max_edge: int = 1536, quality: int = 90) -> bytes:
+# Default prep sizes for model inference (HD). Cloudflare stays at 512 (platform cap).
+HD_PERSON_MAX_EDGE = 2048
+HD_GARMENT_MAX_EDGE = 1536
+HD_JPEG_QUALITY = 92
+
+
+def resize_max_edge(
+    image_bytes: bytes,
+    max_edge: int = HD_PERSON_MAX_EDGE,
+    quality: int = HD_JPEG_QUALITY,
+) -> bytes:
     """Resize so the longest edge is <= max_edge. Returns JPEG or PNG bytes."""
     img = Image.open(io.BytesIO(image_bytes))
     has_alpha = img.mode in ("RGBA", "LA") or (
@@ -51,8 +61,14 @@ def resize_max_edge(image_bytes: bytes, max_edge: int = 1536, quality: int = 90)
     w, h = img.size
     longest = max(w, h)
     if longest > max_edge:
-        scale = max_edge / longest
-        img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.LANCZOS)
+        # Anchor the long edge exactly at max_edge (avoid float truncating to max_edge-1).
+        if w >= h:
+            new_w = max_edge
+            new_h = max(1, round(h * max_edge / w))
+        else:
+            new_h = max_edge
+            new_w = max(1, round(w * max_edge / h))
+        img = img.resize((new_w, new_h), Image.LANCZOS)
 
     buf = io.BytesIO()
     if has_alpha:
@@ -64,20 +80,26 @@ def resize_max_edge(image_bytes: bytes, max_edge: int = 1536, quality: int = 90)
 
 def resize_for_cloudflare(image_bytes: bytes, max_edge: int = 512) -> bytes:
     """Cloudflare FLUX Klein requires input images smaller than 512×512."""
-    return resize_max_edge(image_bytes, max_edge=max_edge, quality=90)
+    return resize_max_edge(image_bytes, max_edge=max_edge, quality=HD_JPEG_QUALITY)
 
 
-def prep_person_bytes(person_bytes: bytes, *, for_cloudflare: bool = False) -> bytes:
+def prep_person_bytes(
+    person_bytes: bytes,
+    *,
+    for_cloudflare: bool = False,
+    max_edge: int = HD_PERSON_MAX_EDGE,
+) -> bytes:
     if for_cloudflare:
         return resize_for_cloudflare(person_bytes)
-    return resize_max_edge(person_bytes, max_edge=1536)
+    return resize_max_edge(person_bytes, max_edge=max_edge)
 
 
 def prep_item_bytes_list(
     item_bytes: list[bytes],
     *,
     for_cloudflare: bool = False,
-    limit: int = 3,
+    limit: int = 4,
+    max_edge: int = HD_GARMENT_MAX_EDGE,
 ) -> list[bytes]:
     prepared: list[bytes] = []
     for raw in item_bytes[:limit]:
@@ -85,7 +107,7 @@ def prep_item_bytes_list(
             prepared.append(
                 resize_for_cloudflare(raw)
                 if for_cloudflare
-                else resize_max_edge(raw, max_edge=1024)
+                else resize_max_edge(raw, max_edge=max_edge)
             )
         except Exception as e:
             logger.warning(f"tryon prep: skip garment bytes: {e}")

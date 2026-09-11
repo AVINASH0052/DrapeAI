@@ -1,16 +1,20 @@
-# DrapeAI
+# Sugatai
 
-AI-powered personal stylist for India. Upload clothing items, get AI outfit recommendations, track what you wear, and build a smart digital wardrobe.
+AI-powered personal stylist for India. Upload clothing items, get AI outfit recommendations, track what you wear, and virtual try-on.
+
+**Product name:** Sugatai · **Repo folder:** `Sugatai` · **API:** `https://api.sugatai.com` · **Admin:** `https://app.sugatai.com/workadmin/`
+
+Infra identifiers may still say `drapeai` (Postgres user/db, some Docker names, `/health` `service` field). Firebase project id is `sugatai-41e84`.
 
 ## Documentation
 
-**Start here → [docs/README.md](docs/README.md)** (handbook index, Multi-tenant-style).
+**Start here → [docs/README.md](docs/README.md)**
 
 | Need | Doc |
 |---|---|
 | Run locally | [docs/local-development/](docs/local-development/) |
-| Architecture | [docs/architecture/OVERVIEW.md](docs/architecture/OVERVIEW.md) |
-| Deploy / CI | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · [docs/deployment.md](docs/deployment.md) |
+| Architecture | [docs/architecture/OVERVIEW.md](docs/architecture/OVERVIEW.md) · [docs/architecture/DRAWIO-MERMAID.md](docs/architecture/DRAWIO-MERMAID.md) |
+| Deploy / CI | [docs/deployment.md](docs/deployment.md) · [docs/services/ADMIN.md](docs/services/ADMIN.md) |
 | Session lessons | [docs/ops/SESSION-LESSONS.md](docs/ops/SESSION-LESSONS.md) |
 | Integrations | [docs/integrations/](docs/integrations/) |
 | Coding rules | [docs/rules/CODING-STANDARDS.md](docs/rules/CODING-STANDARDS.md) |
@@ -21,42 +25,22 @@ AI-powered personal stylist for India. Upload clothing items, get AI outfit reco
 ## Architecture
 
 ```
-DrapeAI/
+Sugatai/                       # repo folder
 ├── api/                       # FastAPI backend (Python 3.11)
-│   ├── app/
-│   │   ├── auth/              # Firebase JWT verification + admin guards
-│   │   ├── database/          # asyncpg pool + SQL queries
-│   │   ├── middleware/        # Rate limiting (Redis), security headers
-│   │   ├── models/            # Pydantic schemas
-│   │   ├── routes/            # HTTP endpoints (15 routers)
-│   │   ├── services/          # AI pipeline, Redis, outfit logic
-│   │   └── workers/           # ARQ background tasks + cron
-│   ├── db/
-│   │   ├── init.sql           # PostgreSQL schema (canonical)
-│   │   ├── migrations/        # Incremental SQL migrations (0002-0007)
-│   │   └── alembic/           # Alembic migration framework
-│   ├── tests/                 # pytest-asyncio integration tests (40+)
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   └── .env.example
-├── app/                       # Flutter mobile app
-│   ├── lib/
-│   │   ├── core/              # Theme, routing, network client
-│   │   └── features/          # auth, wardrobe, outfits, lookbooks,
-│   │                          # profile, calendar, analytics,
-│   │                          # notifications, onboarding
-│   └── test/                  # Widget tests (28+)
-├── admin/                     # React admin dashboard (Vite)
-│   └── src/
-│       ├── pages/             # Dashboard, Users, SystemHealth, Login
-│       └── services/          # API client
-├── infra/                     # Docker Compose + Nginx + Redis
-│   ├── docker-compose.dev.yml
-│   ├── docker-compose.prod.yml
-│   ├── docker-compose.swarm.yml  # Zero-downtime rolling deploys
-│   ├── nginx/nginx.conf
-│   └── redis/redis.conf
-└── .github/workflows/         # CI/CD (test + deploy + Alembic)
+│   ├── app/routes/            # 17 routers (auth, avatar, items, outfits, try_on, admin, …)
+│   ├── app/services/          # AI pipeline, try-on cascade, storage
+│   ├── app/workers/           # ARQ background tasks + cron
+│   ├── db/init.sql + alembic/ # Schema + migrations
+│   └── tests/
+├── app/                       # Flutter — Sugatai (com.sugatai.sugatai)
+│   └── lib/features/          # auth, avatar, wardrobe, outfits, try_on,
+│                              # lookbooks, calendar, analytics, …
+├── admin/                     # Vite + React ops console (/workadmin/)
+├── web/                       # Marketing site + waitlist Worker
+├── api-edge/                  # Optional Cloudflare API edge Worker
+├── design-system/sugatai/     # Brand tokens
+├── infra/                     # Compose / Swarm / Nginx / Redis / RunPod worker
+└── docs/                      # Handbook
 ```
 
 ---
@@ -65,19 +49,18 @@ DrapeAI/
 
 | Layer | Technology |
 |-------|-----------|
-| Mobile | Flutter 3.x + Riverpod + GoRouter |
+| Mobile | Flutter 3.x + Riverpod + GoRouter (Sugatai) |
 | Backend | FastAPI + Python 3.11 + asyncpg (raw SQL) |
-| Database | PostgreSQL 16 + pgvector + JSONB |
+| Database | PostgreSQL 16 + pgvector (1024-dim embeddings) |
 | Auth | Firebase Auth (Phone OTP + Google + Apple) |
-| AI | GPT-4o vision + text-embedding-3-small (1024-dim) |
-| Storage | Cloudflare R2 (prod), local filesystem (dev) |
-| Cache/Queue | Redis 7 (rate limiting, ARQ task broker) |
-| Background | ARQ (async task queue, cron jobs) |
-| Migrations | Alembic + raw SQL files |
-| BG Removal | rembg (ONNX) |
-| Weather | Open-Meteo (free, no key) |
-| Admin | Vite + React + Recharts |
-| Deploy | Docker Swarm (2 replicas, rolling update) |
+| AI | Multi-provider cascade (Gemini / Vertex / OpenAI / Anthropic / Groq / NVIDIA / Cloudflare / RunPod) |
+| Embeddings | Primary `nvidia/nv-embedqa-e5-v5` (1024-dim) |
+| Storage | Cloudflare R2 (prod), local `./uploads` (dev) |
+| Cache/Queue | Redis 7 in prod (rate limit + ARQ); optional locally |
+| Background | ARQ workers |
+| Weather | Open-Meteo (no API key) |
+| Admin | Vite + React + Recharts at port **5174** `/workadmin/` |
+| Edge | Cloudflare Workers / tunnel (`api.sugatai.com`) |
 
 ---
 
@@ -95,7 +78,7 @@ DrapeAI/
 # Copy and fill in environment variables
 cp api/.env.example api/.env
 
-# Start DB + Redis + API
+# Start DB + API (Redis is optional locally — API falls back to in-memory rate limits)
 docker compose -f infra/docker-compose.dev.yml up
 
 # API is at http://localhost:8000
@@ -110,7 +93,7 @@ cd app
 flutter pub get
 
 # Add google-services.json (Android) and GoogleService-Info.plist (iOS)
-# from your Firebase console
+# for bundle id com.sugatai.sugatai from your Firebase console
 
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000   # Android emulator
 flutter run --dart-define=API_BASE_URL=http://localhost:8000   # iOS simulator
@@ -122,17 +105,14 @@ flutter run --dart-define=API_BASE_URL=http://localhost:8000   # iOS simulator
 cd admin
 npm install
 npm run dev
-# Opens at http://localhost:5173, proxies API calls to :8000
+# Opens at http://localhost:5174/workadmin/ — proxies /admin and /uploads to :8000
 ```
 
 ### 4. Run Tests
 
 ```bash
-# Backend (40+ integration tests)
 cd api && python -m pytest tests/ -v
-
-# Flutter (28 widget tests)
-cd app && flutter test test/features/ --reporter compact
+cd app && flutter test
 ```
 
 ---
@@ -215,14 +195,14 @@ See `api/.env.example` for the full list.
 ## AI Pipeline
 
 When a clothing item is uploaded:
-1. **Background removal** — rembg strips background (~1s)
+1. **Garment split** — worn outfits can become multiple pieces; otherwise rembg on the whole image
 2. **Storage** — saved to R2 / local filesystem
-3. **Vision tagging** — GPT-4o analyses image → category, color, pattern, fabric, formality, style tags (~3s, ~$0.03)
-4. **Embedding** — text-embedding-3-small generates 1024-dim vector (~0.1s, ~$0.0001)
+3. **Vision tagging** — multi-provider cascade (Gemini / NVIDIA / OpenAI / …) → category, color, pattern, fabric, formality, style tags
+4. **Embedding** — primary `nvidia/nv-embedqa-e5-v5` (1024-dim); OpenAI `text-embedding-3-small` is fallback
 
 When outfits are generated:
 1. Rule engine filters wardrobe and scores color/formality/ethnic combos
-2. Top 20 candidates sent to GPT-4o for final ranking with reasons
+2. Top candidates sent to the RANK LLM for final ranking with reasons
 3. Results cached 24h per user+occasion+date
 
 ---

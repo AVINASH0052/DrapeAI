@@ -1,7 +1,6 @@
-# Copy to key.properties and fill in for release builds.
-# Do NOT commit key.properties to git.
-
-storePassword=your-keystore-password
-keyPassword=your-key-password
-keyAlias=drapeai
-storeFile=../drapeai-release.keystore
+# Copy to key.properties (gitignored) and fill in real values.
+# Never commit the keystore or this file with live passwords.
+storePassword=
+keyPassword=
+keyAlias=upload
+storeFile=upload-keystore.jks

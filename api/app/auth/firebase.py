@@ -46,7 +46,7 @@ async def verify_firebase_token(token: str) -> dict:
         if settings.environment == "development":
             return {
                 "user_id": "test-user-001",
-                "email": "test@drapeai.app",
+                "email": "test@sugatai.com",
                 "name": "Test User",
                 "phone_number": None,
                 "picture": None,

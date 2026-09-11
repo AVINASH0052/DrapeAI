@@ -8,8 +8,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/constants/environment.dart';
+import '../../avatar/providers/avatar_studio_provider.dart';
 import '../providers/wardrobe_provider.dart';
 import '../widgets/cost_per_wear_card.dart';
+
+const _garmentSizes = ['xs', 's', 'm', 'l', 'xl', 'xxl', 'free'];
+const _garmentFits = ['slim', 'regular', 'relaxed', 'baggy', 'oversized'];
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
   final String itemId;
@@ -64,7 +68,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   Future<void> _delete() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.bg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Text('Delete item?',
@@ -73,14 +77,14 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             style: AppTypography.body),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text(
               'Cancel',
               style: TextStyle(color: AppColors.ink3),
             ),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Delete',
                 style: TextStyle(
                     color: AppColors.red, fontWeight: FontWeight.w600)),
@@ -88,9 +92,23 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         ],
       ),
     );
-    if (confirmed == true && mounted) {
+    if (confirmed != true || !mounted) return;
+    try {
       await ref.read(wardrobeProvider.notifier).deleteItem(widget.itemId);
+      ref.read(avatarStudioProvider.notifier).pruneMissing(
+            (ref.read(wardrobeProvider).valueOrNull ?? [])
+                .map((i) => i.id)
+                .toSet(),
+          );
       if (mounted) context.pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not delete item: $e'),
+          backgroundColor: AppColors.red,
+        ),
+      );
     }
   }
 
@@ -110,6 +128,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     final colorController = TextEditingController(
       text: (item['primary_color'] ?? '').toString(),
     );
+    var size = (item['garment_size'] ?? '').toString();
+    var fit = (item['garment_fit'] ?? '').toString();
 
     final save = await showModalBottomSheet<bool>(
       context: context,
@@ -118,7 +138,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (sheetContext) => Padding(
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheet) => Padding(
         padding: EdgeInsets.fromLTRB(
           20,
           12,
@@ -191,6 +212,37 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
+                const SizedBox(height: 4),
+                Text('Size', style: AppTypography.body),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final option in _garmentSizes)
+                      ChoiceChip(
+                        label: Text(option.toUpperCase()),
+                        selected: size == option,
+                        onSelected: (_) => setSheet(() => size = option),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text('Fit on body', style: AppTypography.body),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final option in _garmentFits)
+                      ChoiceChip(
+                        label: Text(_capitalize(option)),
+                        selected: fit == option,
+                        onSelected: (_) => setSheet(() => fit = option),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: remarksController,
                   maxLength: 500,
@@ -198,7 +250,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                   textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
                     labelText: 'Remarks',
-                    hintText: 'Fit, styling notes, where you bought it...',
+                    hintText: 'Styling notes, where you bought it...',
                     alignLabelWithHint: true,
                   ),
                 ),
@@ -223,6 +275,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             ),
           ),
         ),
+        ),
       ),
     );
 
@@ -240,6 +293,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         'notes': remarksController.text.trim(),
         'category': categoryController.text.trim().toLowerCase(),
         'primary_color': colorController.text.trim().toLowerCase(),
+        if (size.isNotEmpty) 'garment_size': size,
+        if (fit.isNotEmpty) 'garment_fit': fit,
       });
       ref.invalidate(wardrobeProvider);
       await _loadItem();
@@ -293,6 +348,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     final wearCount = _item!['wear_count'] ?? 0;
     final imageUrl = _item!['image_url'] ?? '';
     final remarks = (_item!['notes'] ?? '').toString().trim();
+    final garmentSize = (_item!['garment_size'] ?? '').toString();
+    final garmentFit = (_item!['garment_fit'] ?? '').toString();
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -404,6 +461,10 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       if (season.toString().isNotEmpty)
                         _Sticker(_capitalize(season.toString())),
                       if (color.isNotEmpty) _Sticker(_capitalize(color)),
+                      if (garmentSize.isNotEmpty)
+                        _Sticker(garmentSize.toUpperCase()),
+                      if (garmentFit.isNotEmpty)
+                        _Sticker(_capitalize(garmentFit)),
                     ],
                   ),
                   const SizedBox(height: 18),

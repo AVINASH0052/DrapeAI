@@ -13,6 +13,7 @@ import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/widgets/drape_ui.dart';
+import '../../avatar/providers/avatar_studio_provider.dart';
 import '../providers/wardrobe_provider.dart';
 import '../widgets/photo_guide_overlay.dart';
 
@@ -66,9 +67,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     try {
       final file = await _picker.pickImage(
         source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 90,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 92,
       );
       if (file == null) return;
       _showPreview(file.path);
@@ -109,21 +110,34 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
     setState(() => _uploading = true);
     try {
       final api = ref.read(apiClientProvider);
-      await api.uploadItem(path);
+      final result = await api.uploadItem(path);
       ref.invalidate(wardrobeProvider);
+      ref.invalidate(avatarWardrobeProvider);
       if (!mounted) return;
+      final processing = result['processing_status'] == 'processing';
+      final count = (result['uploaded'] as num?)?.toInt() ??
+          ((result['items'] as List?)?.length ?? 1);
+      final split = result['split'] == true || count > 1;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Added to closet. AI is tagging in the background.'),
+        SnackBar(
+          content: Text(
+            processing
+                ? 'Photo saved. Pieces appear in your closet in a minute.'
+                : split
+                    ? 'Added $count garments to your closet.'
+                    : 'Added to closet.',
+          ),
           backgroundColor: AppColors.ink,
         ),
       );
       context.go(widget.returnRoute);
     } catch (e) {
       if (mounted) {
+        final msg = e.toString();
+        final short = msg.length > 120 ? '${msg.substring(0, 120)}…' : msg;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Upload failed. Please try again.'),
+          SnackBar(
+            content: Text('Upload failed: $short'),
             backgroundColor: AppColors.red,
           ),
         );

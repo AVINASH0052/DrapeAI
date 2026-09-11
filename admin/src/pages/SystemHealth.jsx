@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { ErrorBanner, LoadingBlock } from '../components/ui';
 
 function formatUptime(seconds) {
   if (!seconds) return '—';
@@ -29,6 +30,7 @@ export default function SystemHealth() {
   const fetchHealth = async () => {
     try {
       setLoading(true);
+      setError('');
       const data = await api.getSystemHealth();
       setHealth(data);
     } catch (err) {
@@ -42,17 +44,14 @@ export default function SystemHealth() {
     fetchHealth();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="spinner" />
-      </div>
-    );
+  if (loading) return <LoadingBlock />;
+  if (error && !health) {
+    return <ErrorBanner message={`Failed to load system health: ${error}`} />;
   }
 
-  if (error) {
-    return <div className="error-message">Failed to load system health: {error}</div>;
-  }
+  const tables = health?.tables?.length
+    ? health.tables
+    : Object.entries(health?.table_counts || {}).map(([name, row_count]) => ({ name, row_count }));
 
   return (
     <div>
@@ -61,12 +60,13 @@ export default function SystemHealth() {
           <h1>System Health</h1>
           <p>Database and infrastructure status</p>
         </div>
-        <button className="btn btn-ghost" onClick={fetchHealth}>
-          ↻ Refresh
+        <button type="button" className="btn btn-ghost" onClick={fetchHealth}>
+          Refresh
         </button>
       </div>
 
-      {/* Health Cards */}
+      <ErrorBanner message={error} />
+
       <div className="health-grid">
         <div className="health-card">
           <div className="health-label">Database Connection</div>
@@ -95,13 +95,36 @@ export default function SystemHealth() {
         </div>
       </div>
 
-      {/* Table Row Counts */}
-      {health?.tables && health.tables.length > 0 && (
+      {health?.providers?.length ? (
+        <div className="table-container" style={{ marginBottom: 24 }}>
+          <div className="table-header">
+            <h2>AI providers</h2>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {health.providers.map((p) => (
+                <tr key={p.name}>
+                  <td>{p.name}</td>
+                  <td>{p.configured ? 'Configured' : 'Missing'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {tables.length > 0 ? (
         <div className="table-container">
           <div className="table-header">
             <h2>Database Tables</h2>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-              {health.tables.length} tables
+              {tables.length} tables
             </span>
           </div>
           <table>
@@ -112,18 +135,10 @@ export default function SystemHealth() {
               </tr>
             </thead>
             <tbody>
-              {health.tables.map((t) => (
+              {tables.map((t) => (
                 <tr key={t.name}>
                   <td>
-                    <code style={{
-                      background: 'rgba(129, 140, 248, 0.08)',
-                      padding: '2px 8px',
-                      borderRadius: 4,
-                      fontSize: '0.8125rem',
-                      color: 'var(--accent)',
-                    }}>
-                      {t.name}
-                    </code>
+                    <code className="table-code">{t.name}</code>
                   </td>
                   <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                     {formatRowCount(t.row_count)}
@@ -133,7 +148,7 @@ export default function SystemHealth() {
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

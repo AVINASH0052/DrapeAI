@@ -19,8 +19,8 @@ router = APIRouter(prefix="/wardrobe", tags=["Wardrobe"])
 async def get_gaps(user: User = Depends(get_current_user)):
     """Return prioritized list of items the user should add to their wardrobe.
 
-    Backed by the heavy-reasoning model (Claude Sonnet primary). Cached per-user
-    for 7 days via outfit_cache table to avoid re-running on every open.
+    Backed by the heavy-reasoning model (Claude Sonnet primary). Computed
+    on each request — no persistent cache yet.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:

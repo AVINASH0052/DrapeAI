@@ -96,7 +96,8 @@ async def run_avatar_analysis(user_id: str) -> dict:
         if not check.ok:
             raise ValueError(check.reason or "Use a clear, full-body photo.")
 
-        avatar_bytes = await remove_background(source)
+        # Keep avatar base sharp for Studio overlays (not the old 1024 cap).
+        avatar_bytes = await remove_background(source, max_side=2048)
         profile = _renderability_profile(avatar_bytes)
         avatar_key = await upload_avatar_base(user_id, avatar_bytes)
 
@@ -115,6 +116,19 @@ async def run_avatar_analysis(user_id: str) -> dict:
                 avatar_key,
                 json.dumps(profile),
             )
+            from app.database.queries.notifications import create_notification
+
+            try:
+                await create_notification(
+                    conn,
+                    user_id,
+                    title="Avatar ready",
+                    body="Your body photo is ready — open Avatar Studio to try looks.",
+                    notif_type="avatar",
+                    data=json.dumps({"screen": "avatar_studio"}),
+                )
+            except Exception:
+                logger.exception("Failed to create avatar-ready notification")
         return profile
     except Exception as exc:
         logger.exception("Avatar analysis failed for user %s", user_id)

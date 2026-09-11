@@ -8,6 +8,7 @@ import logging
 import redis.asyncio as aioredis
 
 from app.config import settings
+from app.utils.redact import redact_url
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ _redis: aioredis.Redis | None = None
 async def init_redis() -> None:
     """Initialize the Redis connection pool. Call from lifespan startup."""
     global _redis
-    logger.info("Connecting to Redis at %s", settings.redis_url)
+    logger.info("Connecting to Redis at %s", redact_url(settings.redis_url))
     client = aioredis.from_url(
         settings.redis_url,
         encoding="utf-8",

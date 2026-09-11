@@ -21,9 +21,15 @@ services:
       ENVIRONMENT: development
       DATABASE_URL: postgresql://drapeai:drapeai@db:5432/drapeai
       LOG_LEVEL: DEBUG
+      # Vertex SA path inside the container (host file mounted below).
+      GOOGLE_CLOUD_PROJECT: sugatai
+      GOOGLE_CLOUD_LOCATION: us-central1
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-sa.json
     volumes:
       - ../api:/app
       - uploads_dev:/app/uploads
+      # Host SA JSON (gitignored). Optional for local runs that only use API-key Gemini.
+      - ../sugatai-bf40f978879a.json:/run/secrets/gcp-sa.json:ro
     ports:
       - "8000:8000"
     depends_on:

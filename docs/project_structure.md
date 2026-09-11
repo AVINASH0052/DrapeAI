@@ -1,6 +1,6 @@
-# DrapeAI -- Project Structure
+# Project Structure (historical scaffold)
 
-Exact folder layout for the monorepo. Every folder explained. Copy this to scaffold the project.
+> **Stale.** Do not use this file to scaffold. Product is **Sugatai**; repo folder is `Sugatai`. Canonical layout: [architecture/OVERVIEW.md](architecture/OVERVIEW.md) and the live tree under `api/`, `app/`, `admin/`, `web/`, `api-edge/`, `infra/`. Kept for archaeology only.
 
 ---
 

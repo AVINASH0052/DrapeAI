@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../avatar/providers/avatar_studio_provider.dart';
 import '../models/item_model.dart';
 
 final wardrobeCategoryFilter = StateProvider<String?>((ref) => null);
@@ -29,6 +30,8 @@ class WardrobeNotifier extends AsyncNotifier<List<Item>> {
     await api.deleteItem(id);
     state = AsyncValue.data(
         state.value?.where((i) => i.id != id).toList() ?? []);
+    // Keep Avatar Studio carousel / selections in sync with soft-deletes.
+    ref.invalidate(avatarWardrobeProvider);
   }
 
   void refresh() => ref.invalidateSelf();

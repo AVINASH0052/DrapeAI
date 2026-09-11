@@ -10,6 +10,7 @@ import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/drape_ui.dart';
 import '../../try_on/services/try_on_photo_actions.dart';
+import '../../try_on/widgets/try_on_refine_composer.dart';
 import '../models/outfit_model.dart';
 
 /// Full-screen sheet that generates and shows "see me in this outfit" preview.
@@ -31,6 +32,13 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
   String? _statusMessage;
   int? _limit;
   int? _remaining;
+  final _refineController = TextEditingController();
+
+  @override
+  void dispose() {
+    _refineController.dispose();
+    super.dispose();
+  }
 
   void _captureUsage(Map<String, dynamic> data) {
     final limit = data['limit'];
@@ -82,7 +90,8 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
   }
 
   Future<void> _pollJob(ApiClient api, String jobId) async {
-    const maxAttempts = 45;
+    // Match Avatar Studio (~4 min): refine/HD Vertex can exceed 90s.
+    const maxAttempts = 120;
     for (var i = 0; i < maxAttempts; i++) {
       await Future<void>.delayed(const Duration(seconds: 2));
       if (!mounted) return;
@@ -139,6 +148,46 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
     });
   }
 
+  Future<void> _refine() async {
+    final message = _refineController.text.trim();
+    if (message.isEmpty || _loading || _previewUrl == null) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _statusMessage = 'Refining look…';
+    });
+    try {
+      final api = ref.read(apiClientProvider);
+      final data = await api.refineVisualize(widget.outfit.id, message);
+      if (!mounted) return;
+      _captureUsage(data);
+
+      final status = data['status'] as String?;
+      final jobId = data['job_id'] as String?;
+      if (jobId != null &&
+          status != null &&
+          status != 'completed' &&
+          status != 'failed') {
+        await _pollJob(api, jobId);
+        if (mounted && _error == null) {
+          _refineController.clear();
+        }
+        return;
+      }
+
+      _applyResult(data);
+      if (_error == null) {
+        _refineController.clear();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = _mapError(e);
+      });
+    }
+  }
+
   String _mapError(Object e) {
     if (e is DioException) {
       final status = e.response?.statusCode;
@@ -150,6 +199,13 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
           if (d['remaining'] is int) _remaining = d['remaining'] as int;
         }
         return 'daily_limit';
+      }
+      if (status == 409) {
+        final msg = detail is Map
+            ? (detail['detail']?.toString() ?? '')
+            : detail?.toString() ?? '';
+        if (msg.isNotEmpty) return msg;
+        return 'A try-on is already in progress. Wait a moment, then try again.';
       }
       if (status == 400) {
         final msg = detail is Map
@@ -181,16 +237,21 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
     if (method == 'composite') return 'Quick composite preview';
     if (method == 'cached') return 'Saved preview';
     if (method.startsWith('ai:')) {
-      final provider = method.split(':').last;
+      final parts = method.split(':');
+      final provider = parts.length > 1 ? parts[1] : method;
+      final refined = parts.length > 2 && parts[2] == 'refine';
       final name = switch (provider) {
         'cloudflare' => 'AI preview',
         'openai' => 'OpenAI',
         'gemini' => 'Gemini',
+        'vertex' => 'Vertex AI',
         'nvidia' => 'NVIDIA',
+        'runpod' => 'RunPod',
         _ => provider,
       };
-      if (provider == 'cloudflare') return name;
-      return model != null ? '$name · $model' : name;
+      final base = refined ? '$name refine' : name;
+      if (provider == 'cloudflare' && !refined) return name;
+      return model != null ? '$base · $model' : base;
     }
     return method;
   }
@@ -276,10 +337,33 @@ class _OutfitVisualizeSheetState extends ConsumerState<OutfitVisualizeSheet> {
           ),
           if (_previewUrl != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-              child: DrapeGradientButton(
-                label: 'Regenerate',
-                onPressed: _loading ? null : () => _generate(force: true),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                0,
+                20,
+                16 + MediaQuery.paddingOf(context).bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TryOnRefineComposer(
+                    controller: _refineController,
+                    enabled: !_loading,
+                    onSubmit: _refine,
+                    onDark: Theme.of(context).brightness == Brightness.dark,
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: _loading ? null : () => _generate(force: true),
+                    child: Text(
+                      'Regenerate from photo',
+                      style: AppTypography.caption.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.orange,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],

@@ -50,15 +50,73 @@ async def get_provider_spend(provider: str) -> float:
     return float(total or 0)
 
 
-async def check_budget(provider: str = "openai") -> None:
-    """Raise 503 if monthly spend exceeds the provider's cap."""
-    total = await get_provider_spend(provider)
-    cap = {
+async def get_total_spend() -> float:
+    """Sum of this month's spend across every provider."""
+    pool = await get_pool()
+    month = datetime.utcnow().strftime("%Y-%m")
+    async with pool.acquire() as conn:
+        total = await conn.fetchval(
+            "SELECT COALESCE(SUM(value), 0) FROM analytics_daily "
+            "WHERE metric LIKE $1",
+            f"ai\\_cost\\_%\\_{month}",
+        )
+    return float(total or 0)
+
+
+def _cap_for(provider: str) -> float:
+    """Monthly USD cap for a provider.
+
+    Unknown providers get the total ceiling rather than infinity — a provider
+    nobody remembered to configure should not be the one that bills freely.
+    """
+    caps = {
         "openai": settings.openai_spend_cap_usd,
         "anthropic": settings.anthropic_spend_cap_usd,
-    }.get(provider, float("inf"))
-    if total >= cap:
-        logger.error(f"{provider} budget exceeded: ${total:.2f} >= ${cap}")
+        "gemini": settings.gemini_spend_cap_usd,
+        "vertex": settings.vertex_spend_cap_usd,
+        "cloudflare": settings.cloudflare_spend_cap_usd,
+        "runpod": settings.runpod_spend_cap_usd,
+        "nvidia": settings.nvidia_spend_cap_usd,
+        "groq": settings.groq_spend_cap_usd,
+    }
+    return caps.get(provider, settings.total_spend_cap_usd)
+
+
+class BudgetExceeded(Exception):
+    """Monthly AI spend cap hit. Callers may fall back to a cheaper provider."""
+
+    def __init__(self, provider: str, spent: float, cap: float):
+        self.provider = provider
+        self.spent = spent
+        self.cap = cap
+        super().__init__(f"{provider} budget exceeded: ${spent:.2f} >= ${cap:.2f}")
+
+
+async def within_budget(provider: str) -> bool:
+    """True if `provider` and the overall ceiling both still have headroom.
+
+    Non-raising variant, for provider-cascade code that should try the next
+    provider rather than fail the request.
+    """
+    cap = _cap_for(provider)
+    spent = await get_provider_spend(provider)
+    if spent >= cap:
+        logger.error("%s budget exceeded: $%.2f >= $%.2f", provider, spent, cap)
+        return False
+
+    total = await get_total_spend()
+    if total >= settings.total_spend_cap_usd:
+        logger.error(
+            "total AI budget exceeded: $%.2f >= $%.2f (blocking %s)",
+            total, settings.total_spend_cap_usd, provider,
+        )
+        return False
+    return True
+
+
+async def check_budget(provider: str = "openai") -> None:
+    """Raise 503 if monthly spend exceeds the provider's cap or the total cap."""
+    if not await within_budget(provider):
         from fastapi import HTTPException
         raise HTTPException(
             status_code=503,

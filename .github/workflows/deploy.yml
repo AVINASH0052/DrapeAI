@@ -2,42 +2,76 @@ name: Deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: Tested git SHA or release tag to deploy
+        required: true
+        type: string
 
 jobs:
+  guard:
+    name: Require green CI
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - id: resolve
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Confirm CI passed for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha="${{ steps.resolve.outputs.sha }}"
+          conclusion=$(gh run list \
+            --workflow=ci.yml \
+            --commit "$sha" \
+            --json conclusion,status \
+            --jq '[.[] | select(.status=="completed")] | .[0].conclusion // empty')
+          if [ "$conclusion" != "success" ]; then
+            echo "No successful CI run for $sha (got ${conclusion:-none}). Deploy the commit CI already tested."
+            exit 1
+          fi
+
   deploy:
     name: Deploy to Production
+    needs: guard
     runs-on: ubuntu-latest
     environment: production
     concurrency:
       group: deploy-production
       cancel-in-progress: false
-
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy to server
+      - name: Deploy tested SHA
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            set -euo pipefail
             cd /opt/drapeai
-            git pull origin main
+            git fetch --tags origin
+            git checkout --force "${{ needs.guard.outputs.sha }}"
 
-            # Run migrations (Alembic tracks applied state)
             docker compose -f infra/docker-compose.prod.yml run --rm api \
               alembic upgrade head
 
-            # Rebuild and restart (API + worker)
             docker compose -f infra/docker-compose.prod.yml build api
             docker compose -f infra/docker-compose.prod.yml up -d api worker redis
 
-            # Verify health
-            sleep 10
-            curl -sf http://localhost:8000/health || exit 1
-            echo "Deploy successful!"
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              if curl -sf http://localhost:8000/ready; then
+                echo "Deploy successful at ${{ needs.guard.outputs.sha }}"
+                exit 0
+              fi
+              sleep 3
+            done
+            echo "Readiness check failed"
+            exit 1
 
       - name: Notify on failure
         if: failure()
-        run: echo "::error::Deployment failed! Check server logs."
+        run: echo "::error::Deployment failed. Check server logs and /ready."

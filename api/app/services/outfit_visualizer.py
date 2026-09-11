@@ -159,11 +159,37 @@ async def visualize_outfit(
 ) -> VisualizeResult:
     """Generate outfit preview — AI providers first, Pillow composite fallback."""
     from app.config import settings
+    from app.database.pool import get_pool
     from app.services.image_gen_provider import generate_tryon_image
 
     person_bytes = await read_image_bytes(try_on_photo_key)
 
-    ai = await generate_tryon_image(person_bytes, items)
+    extra_directives = None
+    # Always send HD-resolution inputs / HD model routing to providers.
+    quality = "hd"
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT llm_reason FROM outfits
+                WHERE id = $1::uuid AND user_id = $2
+                """,
+                outfit_id,
+                user_id,
+            )
+            reason = (row["llm_reason"] if row else None) or ""
+            if "Render options:" in reason:
+                extra_directives = reason
+    except Exception:
+        extra_directives = None
+
+    ai = await generate_tryon_image(
+        person_bytes,
+        items,
+        extra_directives=extra_directives,
+        quality=quality,
+    )
     if ai:
         preview_bytes = ai.image_bytes
         method = f"ai:{ai.provider}"
@@ -179,6 +205,51 @@ async def visualize_outfit(
 
     preview_key = await upload_outfit_preview(user_id, outfit_id, preview_bytes)
     return VisualizeResult(preview_key=preview_key, method=method, model=model)
+
+
+async def refine_outfit_preview(
+    user_id: str,
+    outfit_id: str,
+    message: str,
+) -> VisualizeResult:
+    """Edit the latest outfit preview from freeform text (pose, background, etc.)."""
+    from app.database.pool import get_pool
+    from app.services.image_gen_provider import generate_tryon_refine
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT o.preview_image_key, u.try_on_photo_key
+            FROM outfits o
+            JOIN users u ON u.id = o.user_id
+            WHERE o.id = $1::uuid AND o.user_id = $2
+            """,
+            outfit_id,
+            user_id,
+        )
+    if not row or not row["preview_image_key"]:
+        raise RuntimeError("Generate a try-on preview before refining it")
+
+    preview_bytes = await read_image_bytes(row["preview_image_key"])
+    identity_bytes = None
+    if row.get("try_on_photo_key"):
+        try:
+            identity_bytes = await read_image_bytes(row["try_on_photo_key"])
+        except Exception:
+            identity_bytes = None
+    ai = await generate_tryon_refine(
+        preview_bytes, message, identity_bytes=identity_bytes
+    )
+    if not ai:
+        raise RuntimeError("Try-on refine failed: no image provider available")
+
+    preview_key = await upload_outfit_preview(user_id, outfit_id, ai.image_bytes)
+    return VisualizeResult(
+        preview_key=preview_key,
+        method=f"ai:{ai.provider}:refine",
+        model=ai.model,
+    )
 
 
 async def get_outfit_items_from_db(conn, outfit_id: str, user_id: str) -> list[dict]:

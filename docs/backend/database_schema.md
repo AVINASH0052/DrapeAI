@@ -1,4 +1,4 @@
-# DrapeAI -- Database Schema (PostgreSQL)
+# Sugatai -- Database Schema (PostgreSQL)
 
 All metadata, relationships, and state live in **PostgreSQL** via asyncpg. Images live in **Cloudflare R2**. Vector embeddings use the **pgvector** extension in the same PostgreSQL instance.
 

@@ -11,6 +11,7 @@ from app.auth.dependencies import get_current_user
 from app.database.pool import get_pool
 from app.models.user import User
 from app.services.storage import get_image_url, upload_try_on_session_ref
+from app.utils.redact import CLIENT_SAFE_TRYON_ERROR
 from app.utils.image_validation import validate_image
 
 logger = logging.getLogger(__name__)
@@ -156,7 +157,7 @@ async def create_external_tryon(
                 "session_id": session_id,
                 "job_id": job_id,
                 "status": "failed",
-                "error": str(e),
+                "error": CLIENT_SAFE_TRYON_ERROR,
                 **usage,
             }
 

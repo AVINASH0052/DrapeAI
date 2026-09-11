@@ -10,7 +10,7 @@ import rembg
 logger = logging.getLogger(__name__)
 
 
-def _remove_bg_sync(image_bytes: bytes) -> bytes:
+def _remove_bg_sync(image_bytes: bytes, *, max_side: int = 1024) -> bytes:
     """Synchronous background removal. Runs in executor."""
     result = rembg.remove(image_bytes)
 
@@ -19,8 +19,6 @@ def _remove_bg_sync(image_bytes: bytes) -> bytes:
     if img.mode != "RGBA":
         img = img.convert("RGBA")
 
-    # Resize if larger than 1024px on longest side
-    max_side = 1024
     if max(img.size) > max_side:
         ratio = max_side / max(img.size)
         new_size = (int(img.width * ratio), int(img.height * ratio))
@@ -31,12 +29,14 @@ def _remove_bg_sync(image_bytes: bytes) -> bytes:
     return output.getvalue()
 
 
-async def remove_background(image_bytes: bytes) -> bytes:
+async def remove_background(image_bytes: bytes, *, max_side: int = 1024) -> bytes:
     """Remove background from clothing image. Returns PNG bytes.
 
     Takes 2-4 seconds on CPU. Runs in thread pool to avoid blocking.
     """
     loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(None, _remove_bg_sync, image_bytes)
+    result = await loop.run_in_executor(
+        None, lambda: _remove_bg_sync(image_bytes, max_side=max_side)
+    )
     logger.info(f"Background removed: {len(image_bytes)} -> {len(result)} bytes")
     return result

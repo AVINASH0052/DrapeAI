@@ -3,7 +3,7 @@
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_current_user
 from app.database.pool import get_pool
@@ -30,6 +30,10 @@ class FeedbackRequest(BaseModel):
 
 class RefineRequest(BaseModel):
     message: str
+
+
+class VisualizeRefineRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=500)
 
 
 @router.post("/generate")
@@ -202,15 +206,106 @@ async def visualize_outfit_preview(
         result = (
             try_on_job.job_status_payload(failed)
             if failed
-            else {"job_id": job_id, "status": "failed", "error": str(e)}
+            else {"job_id": job_id, "status": "failed", "error": "try_on_failed"}
         )
     usage = await try_on_job.daily_usage(user.id)  # refreshed: failures refund
     return {**result, **usage}
 
 
-@router.get("/{outfit_id}/visualize/status")
-async def visualize_outfit_status(
+@router.post("/{outfit_id}/visualize/refine")
+async def visualize_outfit_refine(
     outfit_id: str,
+    req: VisualizeRefineRequest,
+    user: User = Depends(get_current_user),
+):
+    """Edit the latest try-on preview with freeform text (pose, background, etc.)."""
+    from app.config import settings
+    from app.services import try_on_job
+
+    await try_on_job.check_tryon_enabled()
+    message = req.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT o.preview_image_key, u.try_on_photo_key,
+                   u.avatar_status, u.avatar_error
+            FROM outfits o
+            JOIN users u ON u.id = o.user_id
+            WHERE o.id = $1 AND o.user_id = $2
+            """,
+            outfit_id,
+            user.id,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Outfit not found")
+        if not row["preview_image_key"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Generate a try-on preview before refining it.",
+            )
+        if not row["try_on_photo_key"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Upload a full-body photo in Profile → See me in outfits first.",
+            )
+        try_on_job.check_avatar_ready(row["avatar_status"], row["avatar_error"])
+
+        active = await try_on_job.find_active_job(conn, user.id, outfit_id)
+        if active:
+            # Idempotent retry of the same refine instruction is OK; otherwise
+            # returning the active visualize/other job would silently drop the
+            # user's "change look" message.
+            existing = (active.get("directives") or "").strip()
+            if existing == message:
+                return try_on_job.job_status_payload(active)
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "A try-on is already in progress for this outfit. "
+                    "Wait for it to finish, then change the look again."
+                ),
+            )
+
+        await try_on_job.check_daily_limit(user.id)
+        job = await try_on_job.create_job(
+            conn, user.id, outfit_id, directives=message
+        )
+        await try_on_job.increment_daily_count(user.id)
+
+    job_id = str(job["id"])
+    usage = await try_on_job.daily_usage(user.id)
+
+    if settings.tryon_async:
+        enqueued = await try_on_job.enqueue_refine_job(job_id, user.id, outfit_id)
+        if enqueued:
+            return {
+                "job_id": job_id,
+                "status": "queued",
+                "cached": False,
+                "outfit_id": outfit_id,
+                **usage,
+            }
+
+    try:
+        result = await try_on_job.run_refine_job(job_id, user.id, outfit_id)
+    except Exception as e:
+        async with pool.acquire() as conn:
+            failed = await try_on_job.get_job(conn, job_id, user.id)
+        result = (
+            try_on_job.job_status_payload(failed)
+            if failed
+            else {"job_id": job_id, "status": "failed", "error": "try_on_failed"}
+        )
+    usage = await try_on_job.daily_usage(user.id)
+    return {**result, **usage}
+
+
+@router.get("/{outfit_id}/visualize/status")
+async def visualize_outfit_status(    outfit_id: str,
     user: User = Depends(get_current_user),
     job_id: str | None = Query(None, description="Specific job to poll"),
 ):

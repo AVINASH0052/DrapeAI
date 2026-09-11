@@ -11,7 +11,7 @@
 | Rule engine | Deterministic filters before LLM ranking (`api/app/services/rule_engine.py`) |
 | LLM ranker | GPT-based outfit ranking / explanation (`llm_ranker.py`) |
 | Vision tagger | GPT-4o (or alternate) clothing attribute extraction |
-| Embedding | `text-embedding-3-small` vector (pgvector) for similarity / pairing |
+| Embedding | Primary `nvidia/nv-embedqa-e5-v5` (1024-dim, pgvector); OpenAI `text-embedding-3-small` is fallback |
 | ARQ | Async Redis task queue for uploads, try-on jobs, cron |
 | R2 | Cloudflare object storage for images (local filesystem in dev) |
 | Firebase Auth | Phone OTP + Google + Apple; JWT verified by FastAPI |

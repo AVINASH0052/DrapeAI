@@ -1,4 +1,6 @@
-# DrapeAI Admin Platform — Build Prompt
+# Admin Platform — Build Prompt (HISTORICAL)
+
+> **Obsolete scaffold.** The shipped admin is Vite + React in `admin/` — see [services/ADMIN.md](services/ADMIN.md). Do not use this prompt to rebuild Next.js.
 
 Paste the section below ("PROMPT FOR CLAUDE") into Claude (Sonnet 4.6, in Claude.ai or Claude Code) to scaffold the web admin platform. After Claude builds the skeleton, paste in your Claude Design exports — the prompt explicitly leaves visual styling open so it can adopt your design.
 

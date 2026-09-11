@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
     is_admin        BOOLEAN NOT NULL DEFAULT FALSE,
     is_suspended    BOOLEAN NOT NULL DEFAULT FALSE,
     suspended_at    TIMESTAMPTZ,
+    admin_notes     TEXT,
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
     last_login_at   TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -102,6 +103,8 @@ CREATE TABLE IF NOT EXISTS items (
 
     -- User metadata
     brand            TEXT,
+    garment_size     TEXT,      -- xs s m l xl xxl free
+    garment_fit      TEXT,      -- slim regular relaxed baggy oversized
     purchase_price   INTEGER,   -- paise (INR x 100)
     purchase_date    DATE,
     notes            TEXT,
@@ -111,6 +114,9 @@ CREATE TABLE IF NOT EXISTS items (
     last_worn_at     TIMESTAMPTZ,
     is_active        BOOLEAN NOT NULL DEFAULT TRUE,
     is_demo          BOOLEAN NOT NULL DEFAULT FALSE,
+    is_flagged       BOOLEAN NOT NULL DEFAULT FALSE,
+    flagged_at       TIMESTAMPTZ,
+    flagged_reason   TEXT,
 
     -- Try-on garment reference pre-flight check (cached by image_url)
     tryon_ref_checked_key TEXT,
@@ -154,10 +160,14 @@ CREATE TABLE IF NOT EXISTS outfits (
     is_worn         BOOLEAN NOT NULL DEFAULT FALSE,
     worn_date       DATE,                       -- Calendar: date the outfit was worn/planned
     preview_image_key TEXT,                   -- generated "see me in this outfit" image
+    slot_fingerprint TEXT,                    -- avatar studio look cache key
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_outfits_user_id ON outfits(user_id);
+CREATE INDEX IF NOT EXISTS idx_outfits_avatar_fingerprint
+    ON outfits (user_id, slot_fingerprint)
+    WHERE occasion = 'avatar studio' AND slot_fingerprint IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_outfits_user_saved ON outfits(user_id) WHERE is_saved = TRUE;
 CREATE INDEX IF NOT EXISTS idx_outfits_user_date ON outfits(user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_outfits_user_worn_date ON outfits(user_id, worn_date) WHERE worn_date IS NOT NULL;
@@ -315,6 +325,7 @@ CREATE TABLE IF NOT EXISTS try_on_jobs (
     method          TEXT,
     result_key      TEXT,
     error_message   TEXT,
+    directives      TEXT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     started_at      TIMESTAMPTZ,
     completed_at    TIMESTAMPTZ
@@ -324,3 +335,40 @@ CREATE INDEX IF NOT EXISTS idx_try_on_jobs_user_created
     ON try_on_jobs(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_try_on_jobs_outfit
     ON try_on_jobs(outfit_id) WHERE outfit_id IS NOT NULL;
+
+-- ============================================================
+-- waitlist_emails (public landing early access)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS waitlist_emails (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'landing',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT waitlist_emails_email_unique UNIQUE (email)
+);
+
+CREATE INDEX IF NOT EXISTS idx_waitlist_emails_created_at
+    ON waitlist_emails (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_items_flagged
+    ON items (flagged_at DESC) WHERE is_flagged = TRUE;
+
+-- ============================================================
+-- admin_audit_log
+-- ============================================================
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    admin_id    TEXT REFERENCES users(id) ON DELETE SET NULL,
+    action      TEXT NOT NULL,
+    target_type TEXT NOT NULL,
+    target_id   TEXT,
+    meta        JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created
+    ON admin_audit_log (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_admin
+    ON admin_audit_log (admin_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_target
+    ON admin_audit_log (target_type, target_id);

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:drapeai/core/theme/app_theme.dart';
-import 'package:drapeai/features/wardrobe/presentation/wardrobe_screen.dart';
-import 'package:drapeai/features/wardrobe/providers/wardrobe_provider.dart';
-import 'package:drapeai/features/wardrobe/models/item_model.dart';
-import 'package:drapeai/features/notifications/providers/notifications_provider.dart';
+import 'package:sugatai/core/theme/app_theme.dart';
+import 'package:sugatai/features/wardrobe/presentation/wardrobe_screen.dart';
+import 'package:sugatai/features/wardrobe/providers/wardrobe_provider.dart';
+import 'package:sugatai/features/wardrobe/models/item_model.dart';
+import 'package:sugatai/features/notifications/providers/notifications_provider.dart';
 
 /// Helper that wraps [WardrobeScreen] in the minimum widget tree needed for
 /// testing: a [ProviderScope] with overridden async providers and a

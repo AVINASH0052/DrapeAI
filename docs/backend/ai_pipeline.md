@@ -1,4 +1,6 @@
-# DrapeAI -- AI Pipeline
+# Sugatai -- AI Pipeline
+
+> **Partial sync.** Live cascade and roles: [../APPLICATION_DOCUMENTATION.md](../APPLICATION_DOCUMENTATION.md) §6 and `api/app/services/ai_provider.py`. Primary embed is `nvidia/nv-embedqa-e5-v5` (1024-dim), not OpenAI-only 1536.
 
 Detailed specification for every AI component: vision tagging, background removal, embedding generation, rule engine, LLM ranker, and caching.
 
@@ -34,7 +36,16 @@ OUTFIT PIPELINE (triggered on user request)
 
 ---
 
-## 1. Background Removal
+## 1. Garment split + product extract (upload)
+
+**Primary path:** vision detect (`prompts/garment_detect.md`) + Gemini image extract
+(`prompts/garment_extract.md`, model `TRYON_MODEL_PRIMARY`) via `garment_splitter.py`.
+A worn t-shirt + pants photo becomes two catalog-style wardrobe images with no person.
+
+**Fallback:** if detection finds no garments (or AI extract fails for all pieces),
+whole-image `rembg` background removal still runs (`bg_remover.py`).
+
+## 1b. Background Removal (fallback / legacy)
 
 **Library:** `rembg` (open source, runs locally, no API cost)
 

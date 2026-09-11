@@ -1,4 +1,6 @@
-# DrapeAI Frontend -- Implementation Guide
+# Sugatai Frontend -- Implementation Guide (historical)
+
+> **Stale scaffold.** Do not follow this to create a new app. Live product is **Sugatai** (`com.sugatai.sugatai`). Canonical: [../services/FRONTEND.md](../services/FRONTEND.md).
 
 Step-by-step instructions: what to build, screen by screen, widget by widget, with code.
 

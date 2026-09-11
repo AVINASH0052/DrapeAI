@@ -29,7 +29,7 @@
 
 ## CTAs
 
-Early access → `mailto:hello@sugatai.com` until waitlist is wired.
+Early access uses an on-page email form that posts to `POST /waitlist`.
 
 ## Phone mock copy
 

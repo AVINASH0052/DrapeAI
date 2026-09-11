@@ -20,6 +20,8 @@ class Item {
   final DateTime? lastWornAt;
   final DateTime createdAt;
   final String processingStatus;
+  final String? garmentSize;
+  final String? garmentFit;
 
   Item({
     required this.id,
@@ -41,6 +43,8 @@ class Item {
     this.lastWornAt,
     required this.createdAt,
     this.processingStatus = 'ready',
+    this.garmentSize,
+    this.garmentFit,
   });
 
   bool get isProcessing =>
@@ -92,6 +96,8 @@ class Item {
           : null,
       createdAt: DateTime.parse(json['created_at'] as String),
       processingStatus: (json['processing_status'] as String?) ?? 'ready',
+      garmentSize: json['garment_size'] as String?,
+      garmentFit: json['garment_fit'] as String?,
     );
   }
 }

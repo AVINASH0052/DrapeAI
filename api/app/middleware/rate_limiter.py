@@ -23,17 +23,46 @@ PATH_LIMITS: dict[str, tuple[int, int]] = {
     "/outfits/generate":   (10, 60),     # 10/min — LLM calls
     "/outfits/shuffle":    (30, 60),     # 30/min
     "/wardrobe/gaps":      (5, 60),      # 5/min — heavy-reasoning model
+    "/try-on/":            (10, 60),
+    "/avatar/":            (15, 60),
+    "/waitlist":           (10, 60),
 }
 
 DEFAULT_LIMIT = (100, 60)  # 100/min for general endpoints
 
 
 def _match_path_limit(path: str) -> tuple[int, int]:
-    """Match request path to rate limit. Returns (max_requests, window_seconds)."""
+    """Match request path to rate limit. Longer prefixes win."""
+    if "/visualize" in path:
+        return (20, 60)
+    matched: tuple[int, int] | None = None
+    matched_len = -1
     for prefix, limit in PATH_LIMITS.items():
-        if path.startswith(prefix):
-            return limit
-    return DEFAULT_LIMIT
+        if path.startswith(prefix) and len(prefix) > matched_len:
+            matched = limit
+            matched_len = len(prefix)
+    return matched or DEFAULT_LIMIT
+
+
+_SKIP_PATHS = {"/health", "/ready", "/docs", "/openapi.json"}
+
+
+async def _identity_for_request(request: Request) -> str:
+    """Verified Firebase uid when a Bearer token is present, else client IP."""
+    auth = request.headers.get("Authorization") or ""
+    if auth.startswith("Bearer "):
+        token = auth.split(" ", 1)[1]
+        try:
+            from app.auth.firebase import verify_firebase_token
+
+            claims = await verify_firebase_token(token)
+            uid = claims.get("user_id")
+            if uid:
+                return f"user:{uid}"
+        except Exception:
+            pass
+    host = request.client.host if request.client else "unknown"
+    return f"ip:{host}"
 
 
 # ─── In-memory fallback (for dev / when Redis is down) ────────────────────────
@@ -125,34 +154,36 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
-        # Skip rate limiting for health checks and docs
         path = request.url.path
-        if path in ("/health", "/docs", "/openapi.json"):
+        if path in _SKIP_PATHS:
             return await call_next(request)
 
-        # Get user identifier: prefer authenticated user, fallback to IP
-        user_id = getattr(request.state, "user_id", None)
-        if not user_id:
-            user_id = f"ip:{request.client.host}" if request.client else "unknown"
-
+        user_id = await _identity_for_request(request)
+        request.state.rate_limit_id = user_id
         max_requests, window = _match_path_limit(path)
 
-        # Try Redis first, fall back to in-memory. A Redis error mid-request
-        # (e.g. connection dropped) must never surface as a 500 — degrade to
-        # the in-memory limiter instead.
+        from app.config import settings
+
         redis = await _get_redis()
         if redis:
             try:
                 allowed = await _check_rate_limit_redis(
                     redis, user_id, path, max_requests, window
                 )
-            except Exception as e:
-                logger.warning(
-                    f"Redis rate-limit check failed, falling back to in-memory: {e}"
-                )
+            except Exception:
+                if settings.environment == "production":
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Service temporarily unavailable.",
+                    )
                 allowed = await _check_rate_limit_memory(
                     user_id, path, max_requests, window
                 )
+        elif settings.environment == "production":
+            raise HTTPException(
+                status_code=503,
+                detail="Service temporarily unavailable.",
+            )
         else:
             allowed = await _check_rate_limit_memory(
                 user_id, path, max_requests, window

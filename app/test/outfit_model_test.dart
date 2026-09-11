@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:drapeai/features/outfits/models/outfit_model.dart';
-import 'package:drapeai/features/wardrobe/models/item_model.dart';
+import 'package:sugatai/features/outfits/models/outfit_model.dart';
+import 'package:sugatai/features/wardrobe/models/item_model.dart';
 
 void main() {
   test('Outfit.copyWith updates previewUrl', () {

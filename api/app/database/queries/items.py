@@ -201,6 +201,7 @@ async def update_item(
         "display_name", "category", "sub_category", "primary_color", "secondary_colors",
         "pattern", "fabric", "style_tags", "formality", "season_tags",
         "ethnic_flag", "notes", "purchase_price",
+        "garment_size", "garment_fit",
     }
     filtered = {k: v for k, v in updates.items() if k in allowed and v is not None}
     if not filtered:
@@ -231,8 +232,13 @@ async def update_item(
 
 async def soft_delete_item(conn: asyncpg.Connection, item_id: str, user_id: str) -> bool:
     result = await conn.execute(
-        "UPDATE items SET is_active = false WHERE id = $1 AND user_id = $2",
-        item_id, user_id,
+        """
+        UPDATE items
+        SET is_active = false, updated_at = NOW()
+        WHERE id = $1::uuid AND user_id = $2 AND is_active = true
+        """,
+        item_id,
+        user_id,
     )
     return result == "UPDATE 1"
 

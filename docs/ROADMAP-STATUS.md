@@ -1,4 +1,4 @@
-# DrapeAI — Roadmap status
+# Sugatai — Roadmap status
 
 **Last updated:** 2026-07-14
 

@@ -67,7 +67,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _startResendTimer();
       if (mounted) setState(() => _view = _AuthView.otp);
     } catch (e) {
-      if (mounted) _showError('Failed to send OTP: $e');
+      if (mounted) {
+        _showError(
+          'Could not send the code. Use Google sign-in for now, or check phone auth / push setup.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -93,7 +97,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       await repo.signInWithGoogle();
       await ref.read(authStatusProvider.notifier).onLoginSuccess();
     } catch (e) {
-      if (mounted) _showError('Google sign-in failed: $e');
+      if (mounted) {
+        _showError(
+          'Google sign-in failed. If this keeps happening, sign out and try again.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

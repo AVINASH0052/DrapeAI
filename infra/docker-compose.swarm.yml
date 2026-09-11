@@ -40,6 +40,7 @@ services:
     image: ${REGISTRY:-drapeai}/api:${TAG:-latest}
     environment:
       ENVIRONMENT: production
+      REQUIRE_PRODUCTION: "1"
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/drapeai
       REDIS_URL: redis://redis:6379/0
     env_file: ./api/.env.prod
@@ -66,6 +67,7 @@ services:
     command: ["python", "-m", "arq", "app.workers.worker.WorkerSettings"]
     environment:
       ENVIRONMENT: production
+      REQUIRE_PRODUCTION: "1"
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/drapeai
       REDIS_URL: redis://redis:6379/0
     env_file: ./api/.env.prod

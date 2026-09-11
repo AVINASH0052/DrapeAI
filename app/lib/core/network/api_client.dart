@@ -49,11 +49,21 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> renderAvatar(
-    Map<String, String> slots,
-  ) async {
+    Map<String, String> slots, {
+    String pose = 'natural',
+    String style = 'studio',
+    String quality = 'hd',
+    bool force = false,
+  }) async {
     final resp = await _dio.post(
       '/avatar/render',
-      data: {'slots': slots},
+      data: {
+        'slots': slots,
+        'pose': pose,
+        'style': style,
+        'quality': quality,
+        'force': force,
+      },
       options: Options(receiveTimeout: const Duration(minutes: 2)),
     );
     return resp.data as Map<String, dynamic>;
@@ -68,6 +78,19 @@ class ApiClient {
       queryParameters: {if (jobId != null) 'job_id': jobId},
     );
     return resp.data as Map<String, dynamic>;
+  }
+
+  /// Previously rendered Avatar Studio looks (saved previews).
+  Future<Map<String, dynamic>> avatarLookHistory({int limit = 24}) async {
+    final resp = await _dio.get(
+      '/avatar/history',
+      queryParameters: {'limit': limit},
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<void> deleteAvatarLook(String outfitId) async {
+    await _dio.delete('/avatar/history/$outfitId');
   }
 
   Future<Map<String, dynamic>> externalTryOn(String filePath) async {
@@ -95,26 +118,6 @@ class ApiClient {
     return resp.data as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> uploadItemsBatch(List<String> filePaths) async {
-    final files = <MapEntry<String, MultipartFile>>[];
-    for (var i = 0; i < filePaths.length; i++) {
-      files.add(MapEntry(
-        'images',
-        await MultipartFile.fromFile(filePaths[i]),
-      ));
-    }
-    final formData = FormData();
-    for (final f in files) {
-      formData.files.add(f);
-    }
-    final resp = await _dio.post(
-      '/items/upload/batch',
-      data: formData,
-      options: Options(receiveTimeout: const Duration(minutes: 5)),
-    );
-    return resp.data as Map<String, dynamic>;
-  }
-
   // --- Preferences ---
   Future<void> savePreferences(Map<String, dynamic> prefs) async {
     await _dio.put('/me/preferences', data: prefs);
@@ -133,7 +136,7 @@ class ApiClient {
     final resp = await _dio.post(
       '/items/upload',
       data: formData,
-      options: Options(receiveTimeout: const Duration(minutes: 2)),
+      options: Options(receiveTimeout: const Duration(seconds: 45)),
     );
     return resp.data as Map<String, dynamic>;
   }
@@ -212,6 +215,19 @@ class ApiClient {
     final resp = await _dio.get(
       '/outfits/$outfitId/visualize/status',
       queryParameters: {if (jobId != null) 'job_id': jobId},
+    );
+    return resp.data as Map<String, dynamic>;
+  }
+
+  /// Post-result freeform refine of the latest try-on preview (pose, background, etc.).
+  Future<Map<String, dynamic>> refineVisualize(
+    String outfitId,
+    String message,
+  ) async {
+    final resp = await _dio.post(
+      '/outfits/$outfitId/visualize/refine',
+      data: {'message': message},
+      options: Options(receiveTimeout: const Duration(minutes: 2)),
     );
     return resp.data as Map<String, dynamic>;
   }

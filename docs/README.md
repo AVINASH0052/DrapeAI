@@ -1,29 +1,33 @@
-# DrapeAI documentation handbook
+# Documentation handbook
 
-Everything you need to **build, run, integrate, deploy, and operate** DrapeAI.  
-Deep dives also live under `docs/backend/`, `docs/frontend/`, and each package README.
+Everything you need to **build, run, integrate, deploy, and operate** Sugatai  
+(repo folder: **Sugatai**). Deep dives also live under `docs/backend/`, `docs/frontend/`, and each package README.
 
-**Last updated:** 2026-07-14
+**Last updated:** 2026-09-11
+
+**Naming:** Product + domains = Sugatai (`api.sugatai.com`, `app.sugatai.com/workadmin/`). Infra identifiers may still say `drapeai` (Postgres user/db, some Docker names). Firebase project id is `sugatai-41e84`.
 
 ---
 
 ## I am new — start here
 
-1. [GLOSSARY.md](GLOSSARY.md) — terms  
-2. [architecture/OVERVIEW.md](architecture/OVERVIEW.md) — system map  
+1. [PRODUCT.md](PRODUCT.md) — what Sugatai is (investor / explain-the-product brief)  
+2. [GLOSSARY.md](GLOSSARY.md) — terms  
+3. [architecture/OVERVIEW.md](architecture/OVERVIEW.md) — system map  
    - [architecture/DECISIONS.md](architecture/DECISIONS.md) — *why* the stack  
    - [architecture.md](architecture.md) — full topology / data flows  
-3. [local-development/README.md](local-development/README.md) — run locally  
-4. [services/README.md](services/README.md) — what each package does  
-5. [rules/AGENTS.md](rules/AGENTS.md) — invariants (read before coding)  
-6. [contributing/README.md](contributing/README.md) — PR / review norms  
+4. [local-development/README.md](local-development/README.md) — run locally  
+5. [services/README.md](services/README.md) — what each package does  
+6. [rules/AGENTS.md](rules/AGENTS.md) — invariants (read before coding)  
+7. [contributing/README.md](contributing/README.md) — PR / review norms  
 
 ## By job
 
 | Job | Go to |
 |---|---|
+| Explain the product / investor brief | [PRODUCT.md](PRODUCT.md) |
 | Local setup | [local-development/](local-development/) · [environment_setup.md](environment_setup.md) |
-| Deploy / CI | [DEPLOYMENT.md](DEPLOYMENT.md) · [deployment.md](deployment.md) |
+| Deploy / CI | [deployment.md](deployment.md) · [ops/](ops/) · [services/ADMIN.md](services/ADMIN.md) |
 | Session lessons / past fixes | [ops/SESSION-LESSONS.md](ops/SESSION-LESSONS.md) |
 | Fix production issue | [ops/TROUBLESHOOTING.md](ops/TROUBLESHOOTING.md) |
 | Add API / UI / migration / test | [instructions/](instructions/) · [rules/CODING-STANDARDS.md](rules/CODING-STANDARDS.md) |
@@ -42,6 +46,7 @@ Deep dives also live under `docs/backend/`, `docs/frontend/`, and each package R
 ```
 docs/
 ├── README.md                    ← this handbook index
+├── PRODUCT.md                   ← non-technical product / investor brief
 ├── GLOSSARY.md
 ├── DEPLOYMENT.md                ← short CI/CD cheat sheet
 ├── architecture/                ← overview + decisions

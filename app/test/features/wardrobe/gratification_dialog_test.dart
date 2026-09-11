@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:drapeai/core/theme/app_theme.dart';
-import 'package:drapeai/features/wardrobe/widgets/gratification_dialog.dart';
+import 'package:sugatai/core/theme/app_theme.dart';
+import 'package:sugatai/features/wardrobe/widgets/gratification_dialog.dart';
 
 /// Helper that renders the [GratificationDialog] inside a dialog context.
 /// We use a Scaffold + Builder so we can call `showDialog` in a realistic

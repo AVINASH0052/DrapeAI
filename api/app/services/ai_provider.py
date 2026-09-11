@@ -325,6 +325,105 @@ class AnthropicProvider(BaseProvider):
                             cost_usd=_calc_cost(model, t_in, t_out))
 
 
+class GeminiProvider(BaseProvider):
+    """Google Gemini generateContent for text + image understanding."""
+
+    name = "gemini"
+
+    def __init__(self, api_key: str, base_url: str):
+        self.api_key = api_key
+        self.base_url = base_url.rstrip("/")
+
+    async def chat(
+        self,
+        prompt: str,
+        *,
+        max_tokens: int = 800,
+        temp: float = 0.3,
+        model: Optional[str] = None,
+    ) -> ProviderCall:
+        if not self.api_key:
+            raise RuntimeError("gemini api key not configured")
+        model = model or settings.gemini_model_vision
+        client = get_http_client()
+        r = await client.post(
+            f"{self.base_url}/models/{model}:generateContent",
+            headers={
+                "x-goog-api-key": self.api_key,
+                "Content-Type": "application/json",
+            },
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": temp,
+                    "maxOutputTokens": max_tokens,
+                },
+            },
+            timeout=120.0,
+        )
+        r.raise_for_status()
+        return self._parse_generate_content(r.json(), model)
+
+    async def vision(
+        self,
+        image_bytes: bytes,
+        prompt: str,
+        *,
+        mime: str = "image/png",
+        model: Optional[str] = None,
+    ) -> ProviderCall:
+        if not self.api_key:
+            raise RuntimeError("gemini api key not configured")
+        model = model or settings.gemini_model_vision
+        b64 = base64.b64encode(image_bytes).decode("ascii")
+        client = get_http_client()
+        r = await client.post(
+            f"{self.base_url}/models/{model}:generateContent",
+            headers={
+                "x-goog-api-key": self.api_key,
+                "Content-Type": "application/json",
+            },
+            json={
+                "contents": [{
+                    "parts": [
+                        {"text": prompt},
+                        {"inline_data": {"mime_type": mime, "data": b64}},
+                    ]
+                }],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "responseMimeType": "application/json",
+                },
+            },
+            timeout=120.0,
+        )
+        r.raise_for_status()
+        return self._parse_generate_content(r.json(), model)
+
+    def _parse_generate_content(self, data: dict, model: str) -> ProviderCall:
+        texts: list[str] = []
+        for cand in data.get("candidates") or []:
+            for part in (cand.get("content") or {}).get("parts") or []:
+                if part.get("text"):
+                    texts.append(part["text"])
+        text = "\n".join(texts).strip()
+        if not text:
+            raise RuntimeError("Gemini returned empty text")
+        usage = data.get("usageMetadata") or {}
+        t_in = int(usage.get("promptTokenCount") or 0)
+        t_out = int(usage.get("candidatesTokenCount") or 0)
+        # Flash vision ~$0.15/$0.60 per 1M tokens — rough line item for caps.
+        cost = (t_in * 0.00015 + t_out * 0.0006) / 1000
+        return ProviderCall(
+            text=text,
+            model=model,
+            provider=self.name,
+            tokens_in=t_in,
+            tokens_out=t_out,
+            cost_usd=cost,
+        )
+
+
 # ─── Provider registry ────────────────────────────────────────────────────────
 _openai = OpenAICompatProvider("openai", settings.openai_api_key,
                                "https://api.openai.com/v1")
@@ -333,22 +432,25 @@ _nvidia = OpenAICompatProvider("nvidia", settings.nvidia_api_key,
 _groq = OpenAICompatProvider("groq", settings.groq_api_key,
                              settings.groq_base_url)
 _anthropic = AnthropicProvider(settings.anthropic_api_key)
+_gemini = GeminiProvider(settings.gemini_api_key, settings.gemini_base_url)
 
 
 def _route(role: Role) -> list[tuple[BaseProvider, str]]:
     """Return ordered (provider, model) tuples to try for a role.
 
-    VISION: nemotron-3-nano-omni (multimodal, reasoning) primary;
-            kimi-k2.6 on NVIDIA as fallback.
+    VISION: Gemini primary (wardrobe detect/tag); NVIDIA then OpenAI fallbacks.
     RANK/CHAT/REASON: kimi-k2.6 on NVIDIA (free, fast).
     EMBED: NVIDIA nv-embedqa-e5-v5; OpenAI text-embedding-3-small fallback.
-    Paid OpenAI/Anthropic serve as last-resort fallbacks.
     """
     s = settings
     if role == Role.VISION:
-        return [(_nvidia, s.model_vision_primary),
-                (_nvidia, s.model_vision_secondary),
-                (_openai, s.model_vision_tertiary)]
+        # Pair each provider with a model it can serve. Never send a Gemini
+        # model id to NVIDIA/OpenAI (or vice versa) just because env lists it.
+        return [
+            (_gemini, s.gemini_model_vision),
+            (_nvidia, "moonshotai/kimi-k2.6"),
+            (_openai, "gpt-4o"),
+        ]
     if role == Role.RANK:
         return [(_nvidia, s.model_rank_primary),
                 (_anthropic, s.model_rank_secondary),
@@ -372,6 +474,8 @@ def _provider_configured(p: BaseProvider) -> bool:
         return bool(p.api_key)
     if isinstance(p, OpenAICompatProvider):
         return bool(p.api_key)
+    if isinstance(p, GeminiProvider):
+        return bool(p.api_key)
     return False
 
 
@@ -380,7 +484,7 @@ async def call_role(role: Role, action: str, *args, **kwargs) -> Any:
 
     action: "chat" | "vision" | "embed"
     """
-    from app.utils.cost_tracker import track_provider_spend
+    from app.utils.cost_tracker import track_provider_spend, within_budget
 
     candidates = _route(role)
     last_error: Optional[Exception] = None
@@ -389,15 +493,36 @@ async def call_role(role: Role, action: str, *args, **kwargs) -> Any:
         if not _provider_configured(provider):
             logger.debug(f"skip {provider.name}: no api key")
             continue
+        # Skip providers that have hit their monthly cap and fall through to
+        # the next one, the same way an unconfigured provider is skipped. A
+        # failure inside the budget check itself must not break AI calls, so
+        # it logs and allows rather than blocking.
+        try:
+            if not await within_budget(provider.name):
+                logger.warning(
+                    f"ai[{role.value}] skip {provider.name}/{model} — monthly cap"
+                )
+                continue
+        except Exception as e:
+            logger.error(f"budget check failed for {provider.name}, allowing: {e!r}")
         try:
             method = getattr(provider, action)
             result = await method(*args, model=model, **kwargs)
             if isinstance(result, ProviderCall):
-                await track_provider_spend(
-                    provider=result.provider, model=result.model,
-                    tokens_in=result.tokens_in, tokens_out=result.tokens_out,
-                    cost_usd=result.cost_usd,
-                )
+                try:
+                    await track_provider_spend(
+                        provider=result.provider, model=result.model,
+                        tokens_in=result.tokens_in, tokens_out=result.tokens_out,
+                        cost_usd=result.cost_usd,
+                    )
+                except Exception as track_err:
+                    # Never fail a successful model call because analytics is down.
+                    logger.warning(
+                        "spend track failed after %s/%s: %r",
+                        result.provider,
+                        result.model,
+                        track_err,
+                    )
                 logger.info(
                     f"ai[{role.value}] -> {result.provider}/{result.model} "
                     f"in={result.tokens_in} out={result.tokens_out} "

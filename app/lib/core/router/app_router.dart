@@ -10,7 +10,6 @@ import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/wardrobe/presentation/wardrobe_screen.dart';
 import '../../features/wardrobe/presentation/item_detail_screen.dart';
 import '../../features/wardrobe/presentation/camera_screen.dart';
-import '../../features/wardrobe/presentation/tag_review_screen.dart';
 import '../../features/wardrobe/presentation/gaps_screen.dart';
 import '../../features/outfits/presentation/today_screen.dart';
 import '../../features/outfits/presentation/shuffle_screen.dart';
@@ -38,7 +37,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authStatus = ref.read(authStatusProvider);
       final isLoggedIn = authStatus == AuthStatus.authenticated;
-      final isOnboarding = authStatus == AuthStatus.onboardingNeeded;
       final needsBody = authStatus == AuthStatus.bodySetupNeeded;
       final isOnLoginPage = state.matchedLocation == '/login';
       final isOnOnboarding = state.matchedLocation == '/onboarding';
@@ -51,10 +49,6 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (authStatus == AuthStatus.unauthenticated) {
         return isOnLoginPage ? null : '/login';
-      }
-
-      if (isOnboarding) {
-        return isOnBodySetup ? null : '/body-setup';
       }
 
       if (needsBody) {
@@ -169,13 +163,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           returnRoute: state.uri.queryParameters['returnTo'] == 'studio'
               ? '/studio'
               : '/wardrobe',
-        ),
-      ),
-      GoRoute(
-        path: '/tag-review',
-        name: 'tag_review',
-        builder: (_, state) => TagReviewScreen(
-          itemData: state.extra as Map<String, dynamic>,
         ),
       ),
       GoRoute(

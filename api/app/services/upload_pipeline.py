@@ -1,7 +1,8 @@
 """Orchestrates the item upload pipeline.
 
-Fast path: store the image + placeholder row, return immediately.
-Background: rembg → vision tags → update row → embedding.
+HTTP accept stores the original photo as a processing placeholder and
+returns immediately (Cloudflare ~100s). Background work then Gemini-splits,
+tags, and embeds. ARQ when Redis is up; FastAPI BackgroundTasks otherwise.
 """
 
 import logging
@@ -16,6 +17,7 @@ from app.database.queries.items import (
 )
 from app.services.bg_remover import remove_background
 from app.services.embedder import generate_embedding
+from app.services.garment_splitter import extract_garments
 from app.services.storage import get_image_url, read_image_bytes, upload_image
 from app.services.vision_tagger import tag_item
 
@@ -36,8 +38,17 @@ PLACEHOLDER_TAGS = {
 }
 
 
+def _placeholder_tags(category_hint: str | None = None, label: str | None = None) -> dict:
+    tags = dict(PLACEHOLDER_TAGS)
+    if category_hint:
+        tags["category"] = category_hint
+    if label:
+        tags["sub_category"] = label
+    return tags
+
+
 async def enqueue_upload_job(item_id: str, user_id: str) -> bool:
-    """Enqueue ARQ upload analysis. Returns False if Redis/worker unavailable."""
+    """Enqueue ARQ upload analysis / embedding. Returns False if Redis unavailable."""
     try:
         from arq import create_pool
 
@@ -59,40 +70,147 @@ async def enqueue_upload_job(item_id: str, user_id: str) -> bool:
         return False
 
 
-async def accept_upload(user_id: str, file_bytes: bytes, _content_type: str | None) -> dict:
-    """Remove the background, persist the clean image, and queue AI analysis."""
-    item_id = str(uuid.uuid4())
-    processed_bytes = await remove_background(file_bytes)
-    storage_key = await upload_image(
-        user_id, item_id, processed_bytes, "image/png"
-    )
+async def _persist_piece(
+    user_id: str,
+    image_bytes: bytes,
+    *,
+    tags: dict,
+    processing_status: str = "ready",
+    item_id: str | None = None,
+    conn=None,
+) -> dict:
+    item_id = item_id or str(uuid.uuid4())
+    storage_key = await upload_image(user_id, item_id, image_bytes, "image/png")
 
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        item = await insert_item(
-            conn,
+    async def _insert(db) -> dict:
+        return await insert_item(
+            db,
             user_id,
             storage_key,
-            PLACEHOLDER_TAGS,
+            tags,
             item_id=item_id,
-            processing_status="queued",
+            processing_status=processing_status,
         )
+
+    if conn is not None:
+        item = await _insert(conn)
+    else:
+        pool = await get_pool()
+        async with pool.acquire() as db:
+            item = await _insert(db)
 
     return {
         "id": item["id"],
         "image_url": get_image_url(item["image_url"]),
-        "status": "processing",
-        "processing_status": "queued",
-        "tags": PLACEHOLDER_TAGS,
-        "confidence": 0.0,
+        "status": "ready" if processing_status == "ready" else "processing",
+        "processing_status": processing_status,
+        "tags": tags,
+        "confidence": tags.get("confidence", 0.0),
+        "category": tags.get("category"),
+        "sub_category": tags.get("sub_category"),
+        "primary_color": tags.get("primary_color"),
     }
 
 
+async def _tag_piece(
+    image_bytes: bytes,
+    *,
+    category_hint: str | None = None,
+    label: str | None = None,
+) -> dict:
+    try:
+        tags = await tag_item(image_bytes)
+        # Keep detect hint if tagger is vague.
+        if category_hint and (tags.get("category") or "") in {"", "unknown"}:
+            tags["category"] = category_hint
+        if label and (tags.get("sub_category") or "") in {"", "processing", "unknown"}:
+            tags["sub_category"] = label
+        return tags
+    except Exception as exc:
+        logger.warning("Gemini tag failed, using detect hints: %r", exc)
+        return _placeholder_tags(category_hint, label)
+
+
+async def accept_upload(user_id: str, file_bytes: bytes, _content_type: str | None) -> dict:
+    """Store the photo as a processing placeholder. Split/tag runs in background."""
+    item = await _persist_piece(
+        user_id,
+        file_bytes,
+        tags=_placeholder_tags(),
+        processing_status="processing",
+    )
+    logger.info("Upload accepted item=%s user=%s (processing)", item["id"], user_id)
+    return {
+        **item,
+        "uploaded": 1,
+        "items": [item],
+        "split": False,
+    }
+
+
+async def _embed(conn, item_id: str, tags: dict) -> None:
+    try:
+        embedding = await generate_embedding(tags)
+        await store_embedding(conn, item_id, embedding)
+    except Exception as e:
+        logger.error("Embedding generation failed for item %s: %s", item_id, e)
+
+
+async def _split_placeholder(conn, item_id: str, user_id: str, source_bytes: bytes) -> None:
+    """Replace a processing placeholder with extracted, tagged garments."""
+    pieces = await extract_garments(source_bytes)
+    if not pieces:
+        logger.warning("Gemini split empty — falling back to whole-image + tag")
+        processed_bytes = await remove_background(source_bytes)
+        tags = await _tag_piece(processed_bytes)
+        # New file key so the closet URL changes (CachedNetworkImage + keep source).
+        storage_key = await upload_image(user_id, str(uuid.uuid4()), processed_bytes, "image/png")
+        updated = await apply_tags_and_image(conn, item_id, user_id, storage_key, tags)
+        if not updated:
+            raise RuntimeError(f"Failed to update tags for item {item_id}")
+        await _embed(conn, item_id, tags)
+        return
+
+    first, *rest = pieces
+    tags = await _tag_piece(
+        first.image_bytes,
+        category_hint=first.category_hint,
+        label=first.label,
+    )
+    storage_key = await upload_image(user_id, str(uuid.uuid4()), first.image_bytes, "image/png")
+    updated = await apply_tags_and_image(conn, item_id, user_id, storage_key, tags)
+    if not updated:
+        raise RuntimeError(f"Failed to update tags for item {item_id}")
+    await _embed(conn, item_id, tags)
+
+    for piece in rest:
+        extra_tags = await _tag_piece(
+            piece.image_bytes,
+            category_hint=piece.category_hint,
+            label=piece.label,
+        )
+        extra = await _persist_piece(
+            user_id,
+            piece.image_bytes,
+            tags=extra_tags,
+            processing_status="ready",
+            conn=conn,
+        )
+        await _embed(conn, extra["id"], extra_tags)
+
+    logger.info(
+        "Upload Gemini-split into %d tagged garments for user %s (item=%s)",
+        1 + len(rest),
+        user_id,
+        item_id,
+    )
+
+
 async def run_upload_pipeline(conn, item_id: str, user_id: str) -> None:
-    """Background analysis for an already-accepted upload."""
+    """Background: ensure tags (if still processing) + embedding."""
     row = await conn.fetchrow(
         """
-        SELECT id, image_url, processing_status
+        SELECT id, image_url, processing_status, category, sub_category
         FROM items
         WHERE id = $1::uuid AND user_id = $2 AND is_active = true
         """,
@@ -102,21 +220,25 @@ async def run_upload_pipeline(conn, item_id: str, user_id: str) -> None:
     if not row:
         raise RuntimeError(f"Item {item_id} not found for user {user_id}")
 
-    await set_processing_status(conn, item_id, user_id, "processing")
-
     processed_bytes = await read_image_bytes(row["image_url"])
-    storage_key = row["image_url"]
-    tags = await tag_item(processed_bytes)
 
-    updated = await apply_tags_and_image(conn, item_id, user_id, storage_key, tags)
-    if not updated:
-        raise RuntimeError(f"Failed to update tags for item {item_id}")
+    if row["processing_status"] != "ready":
+        await set_processing_status(conn, item_id, user_id, "processing")
+        await _split_placeholder(conn, item_id, user_id, processed_bytes)
+        return
 
-    try:
-        embedding = await generate_embedding(tags)
-        await store_embedding(conn, item_id, embedding)
-    except Exception as e:
-        logger.error(f"Embedding generation failed for item {item_id}: {e}")
+    full = await conn.fetchrow(
+        """
+        SELECT category, sub_category, primary_color, secondary_colors,
+               pattern, fabric, style_tags, formality, season_tags, ethnic_flag
+        FROM items
+        WHERE id = $1::uuid AND user_id = $2
+        """,
+        item_id,
+        user_id,
+    )
+    if full:
+        await _embed(conn, item_id, dict(full))
 
 
 async def run_upload_pipeline_standalone(item_id: str, user_id: str) -> None:
@@ -141,35 +263,26 @@ async def run_upload_pipeline_standalone(item_id: str, user_id: str) -> None:
         raise
 
 
-async def process_upload(user_id: str, file_bytes: bytes, content_type: str) -> dict:
-    """Legacy sync path: accept + analyze before returning (tests / fallback)."""
-    result = await accept_upload(user_id, file_bytes, content_type)
-    await run_upload_pipeline_standalone(result["id"], user_id)
+async def regenerate_embedding(item_id: str) -> None:
+    """Re-embed a single item after tag edits (BackgroundTasks / ARQ)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT * FROM items WHERE id = $1::uuid AND user_id = $2",
-            result["id"],
-            user_id,
+            """
+            SELECT category, sub_category, primary_color, secondary_colors,
+                   pattern, fabric, style_tags, formality, season_tags, ethnic_flag
+            FROM items
+            WHERE id = $1::uuid AND is_active = TRUE
+            """,
+            item_id,
         )
-    item = dict(row) if row else {}
-    return {
-        "id": result["id"],
-        "image_url": get_image_url(item.get("image_url", "")),
-        "status": "ready",
-        "processing_status": item.get("processing_status", "ready"),
-        "tags": {
-            "category": item.get("category"),
-            "sub_category": item.get("sub_category"),
-            "primary_color": item.get("primary_color"),
-            "secondary_colors": item.get("secondary_colors"),
-            "pattern": item.get("pattern"),
-            "fabric": item.get("fabric"),
-            "style_tags": item.get("style_tags"),
-            "formality": item.get("formality"),
-            "season_tags": item.get("season_tags"),
-            "ethnic_flag": item.get("ethnic_flag"),
-            "confidence": item.get("confidence", 0.0),
-        },
-        "confidence": item.get("confidence", 0.0),
-    }
+        if not row:
+            logger.warning("regenerate_embedding: item %s not found", item_id)
+            return
+        tags = dict(row)
+        try:
+            embedding = await generate_embedding(tags)
+            await store_embedding(conn, item_id, embedding)
+        except Exception as e:
+            logger.error("regenerate_embedding failed item=%s: %r", item_id, e)
+            raise

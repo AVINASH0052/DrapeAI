@@ -1,4 +1,4 @@
-# DrapeAI Frontend -- Coding Standards
+# Sugatai Frontend -- Coding Standards
 
 Dart and Flutter rules. Read before writing any frontend code.
 

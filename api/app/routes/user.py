@@ -14,6 +14,7 @@ from app.services.avatar_analysis import (
     run_avatar_analysis,
     sanitize_avatar_source,
 )
+from app.services.account_deletion import delete_account_data
 from app.services.storage import delete_image, get_image_url, upload_try_on_photo
 from app.utils.image_validation import validate_image
 
@@ -103,18 +104,10 @@ async def get_user_preferences(user: User = Depends(get_current_user)):
 
 @router.delete("/me")
 async def delete_account(user: User = Depends(get_current_user)):
-    """Hard-delete the user account. CASCADE removes all related data."""
+    """Hard-delete the user account. Storage cleanup then CASCADE. Idempotent."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT try_on_photo_key, avatar_base_key FROM users WHERE id = $1",
-            user.id,
-        )
-        if row:
-            for key in (row["try_on_photo_key"], row["avatar_base_key"]):
-                if key:
-                    await delete_image(key)
-        await conn.execute("DELETE FROM users WHERE id = $1", user.id)
+        await delete_account_data(conn, user.id)
     return {"deleted": True}
 
 

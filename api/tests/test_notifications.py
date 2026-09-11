@@ -15,6 +15,27 @@ async def test_list_notifications(client, auth_headers, clean_db):
 
 
 @pytest.mark.asyncio
+async def test_push_creates_in_app_notification(client, auth_headers, clean_db):
+    """send_push_to_user always writes an in-app notification row."""
+    from app.services.push_sender import send_push_to_user
+
+    ok = await send_push_to_user(
+        "test-user-001",
+        title="Sugatai",
+        body="Inbox smoke test",
+        deep_link="today_outfits",
+    )
+    assert ok is False  # no push tokens in clean DB
+
+    resp = await client.get("/notifications", headers=auth_headers)
+    assert resp.status_code == 200
+    titles = [n["title"] for n in resp.json()["notifications"]]
+    assert "Sugatai" in titles
+    unread = await client.get("/notifications/unread-count", headers=auth_headers)
+    assert unread.json()["unread_count"] >= 1
+
+
+@pytest.mark.asyncio
 async def test_unread_count(client, auth_headers, clean_db):
     """GET /notifications/unread-count returns integer count."""
     resp = await client.get("/notifications/unread-count", headers=auth_headers)

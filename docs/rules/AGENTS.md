@@ -1,23 +1,26 @@
-# DrapeAI — Agent / Copilot Instructions
+# Sugatai — Agent / Copilot Instructions
 
 > **Audience:** GitHub Copilot, Claude Code, Cursor, and any AI agent generating or reviewing code in this repo.  
-> **Purpose:** Keep AI-generated code aligned with DrapeAI architecture, security invariants, and coding conventions.
+> **Purpose:** Keep AI-generated code aligned with Sugatai architecture, security invariants, and coding conventions.
 
-**Last updated:** 2026-07-14
+**Last updated:** 2026-08-15
 
 ---
 
 ## 1. Project Context
 
-DrapeAI is an AI personal stylist for India: upload wardrobe items, get outfit recommendations, track wears, and virtual try-on.
+**Sugatai** (repo folder: Sugatai) is an AI personal stylist for India: upload wardrobe items, get outfit recommendations, track wears, and virtual try-on. Non-technical brief: [../PRODUCT.md](../PRODUCT.md).
 
 | Package | Stack | Responsibility |
 |---|---|---|
 | `api/` | Python 3.11 + FastAPI | Auth, wardrobe, outfits, lookbooks, try-on jobs, admin APIs, ARQ workers |
-| `app/` | Flutter 3.x + Riverpod + GoRouter | Mobile client (Android / iOS) |
-| `admin/` | Vite + React | Internal ops dashboard |
+| `app/` | Flutter 3.x + Riverpod + GoRouter | Mobile client (Android / iOS) — product name Sugatai |
+| `admin/` | Vite + React | Ops console at `/workadmin/` |
+| `web/` | Vite + Workers | Marketing site + waitlist |
+| `api-edge/` | Cloudflare Worker | Optional API edge proxy |
 | `infra/` | Docker Compose / Swarm + Nginx + Redis | Local + prod runtime |
 | `infra/runpod/idm-vton-worker/` | Docker + RunPod Serverless | Optional IDM-VTON GPU try-on |
+| `design-system/sugatai/` | Brand tokens | Visual system |
 
 **Read first:**
 - [../instructions/FOLLOW-THESE.md](../instructions/FOLLOW-THESE.md)
@@ -41,7 +44,7 @@ DrapeAI is an AI personal stylist for India: upload wardrobe items, get outfit r
 ### Package boundaries
 - Flutter talks to the API over HTTPS JSON only.
 - Admin uses the same API with admin auth — no direct DB from the browser.
-- Try-on providers (Cloudflare, NVIDIA, Gemini, OpenAI, RunPod) are abstracted in `api/app/services/image_gen_provider.py` (+ job helpers). Prefer that layer over scattering provider SDKs in routes.
+- Try-on providers (Vertex, Cloudflare, NVIDIA, Gemini, OpenAI, RunPod) are abstracted in `api/app/services/image_gen_provider.py` (+ job helpers). Prefer that layer over scattering provider SDKs in routes.
 
 ### Config
 - All runtime secrets and toggles via env / `api/app/config.py` (`Settings`).

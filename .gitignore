@@ -3,16 +3,30 @@ __pycache__/
 *.py[cod]
 *.pyo
 .venv/
+.venv*/
+api/.venv-vertex/
 venv/
 .env
+.env.*
 !.env.example
+!**/.env.example
 *.egg-info/
 dist/
 build/
 
-# Firebase config (contains API keys)
+# Firebase config (contains API keys) — use *.example templates only
 GoogleService-Info.plist
+**/GoogleService-Info.plist
 google-services.json
+**/google-services.json
+!**/GoogleService-Info.plist.example
+!**/google-services.json.example
+# Google Cloud service account keys (never commit)
+sugatai-*.json
+**/service-account*.json
+**/*-sa.json
+**/gcp-*.json
+
 
 # Pytest
 .pytest_cache/
@@ -33,6 +47,15 @@ app/pubspec.lock
 # Admin (Node)
 admin/node_modules/
 admin/dist/
+admin/.env.production
+admin/.wrangler/
+
+# Landing + edge workers (install locally, never commit)
+web/node_modules/
+web/dist/
+web/.wrangler/
+api-edge/node_modules/
+api-edge/.wrangler/
 
 # Dart
 *.dart.js

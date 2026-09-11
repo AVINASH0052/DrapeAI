@@ -1,4 +1,6 @@
-# DrapeAI Backend -- Implementation Guide
+# Sugatai Backend -- Implementation Guide (historical)
+
+> **Stale scaffold.** Do not follow this to create a new API. Live layout: [../services/BACKEND.md](../services/BACKEND.md). Embeddings are 1024-dim; AI is a multi-provider cascade.
 
 Step-by-step instructions: what to build, in what order, every file, with code.
 

@@ -30,7 +30,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
     'top',
     'bottom',
     'dress',
-    'outer',
+    'outerwear',
     'ethnic',
     'footwear',
     'accessory'

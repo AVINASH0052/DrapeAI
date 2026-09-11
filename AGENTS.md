@@ -1,4 +1,4 @@
-# DrapeAI — Agent / Copilot Instructions
+# Sugatai — Agent / Copilot Instructions
 
 > **Audience:** Cursor, Claude Code, Copilot, and any AI agent working in this repo.  
 > **Canonical copy:** [docs/rules/AGENTS.md](docs/rules/AGENTS.md)
@@ -7,6 +7,7 @@ Read that file before generating or reviewing code. Quick pointers:
 
 | Need | Doc |
 |---|---|
+| What is this product? | [docs/PRODUCT.md](docs/PRODUCT.md) |
 | Handbook index | [docs/README.md](docs/README.md) |
 | Coding standards | [docs/rules/CODING-STANDARDS.md](docs/rules/CODING-STANDARDS.md) |
 | Day-to-day checklist | [docs/rules/CODING-RULES-HANDBOOK.md](docs/rules/CODING-RULES-HANDBOOK.md) |

@@ -1,8 +1,8 @@
-import 'package:drapeai/core/constants/environment.dart';
-import 'package:drapeai/features/avatar/presentation/avatar_studio_screen.dart';
-import 'package:drapeai/features/avatar/providers/avatar_studio_provider.dart';
-import 'package:drapeai/features/profile/providers/user_profile_provider.dart';
-import 'package:drapeai/features/wardrobe/models/item_model.dart';
+import 'package:sugatai/core/constants/environment.dart';
+import 'package:sugatai/features/avatar/presentation/avatar_studio_screen.dart';
+import 'package:sugatai/features/avatar/providers/avatar_studio_provider.dart';
+import 'package:sugatai/features/profile/providers/user_profile_provider.dart';
+import 'package:sugatai/features/wardrobe/models/item_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +24,29 @@ void main() {
 
     expect(notifier.state.selected.containsKey('dresses'), isFalse);
     expect(notifier.state.selected['tops']?.id, 'top');
+  });
+
+  test('slot matching includes ethnic sherwani and trousers subtype', () {
+    expect(
+      itemFitsAvatarSlot(item('b1', 'bottom', subCategory: 'trousers'), 'bottoms'),
+      isTrue,
+    );
+    expect(
+      itemFitsAvatarSlot(item('e1', 'ethnic', subCategory: 'sherwani'), 'dresses'),
+      isTrue,
+    );
+    expect(
+      itemFitsAvatarSlot(item('e2', 'ethnic', subCategory: 'kurta'), 'tops'),
+      isTrue,
+    );
+  });
+
+  test('pruneMissing drops deleted selections', () {
+    final notifier = AvatarStudioNotifier();
+    notifier.toggleItem('tops', item('keep', 'top'));
+    notifier.toggleItem('bottoms', item('gone', 'bottom'));
+    notifier.pruneMissing({'keep'});
+    expect(notifier.state.selected.keys, ['tops']);
   });
 
   test('compile-time developer entry is disabled by default', () {
@@ -53,6 +76,6 @@ void main() {
     await tester.tap(find.byIcon(Icons.view_agenda_outlined));
     await tester.pumpAndSettle();
     expect(find.text('Add bottoms to your closet'), findsOneWidget);
-    expect(find.byType(SafeArea), findsOneWidget);
+    expect(find.text('Studio'), findsOneWidget);
   });
 }

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:drapeai/core/theme/app_theme.dart';
-import 'package:drapeai/features/notifications/presentation/notifications_screen.dart';
-import 'package:drapeai/features/notifications/providers/notifications_provider.dart';
+import 'package:sugatai/core/theme/app_theme.dart';
+import 'package:sugatai/features/notifications/presentation/notifications_screen.dart';
+import 'package:sugatai/features/notifications/providers/notifications_provider.dart';
 
 /// Helper that wraps [NotificationsScreen] with overridden providers.
 Widget _buildTestableNotificationsScreen({
@@ -85,7 +85,7 @@ void main() {
         },
         {
           'id': 'n2',
-          'title': 'Welcome to DrapeAI',
+          'title': 'Welcome to Sugatai',
           'body': 'Start adding items to your wardrobe.',
           'type': 'system',
           'is_read': true,
@@ -103,7 +103,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('New outfit ready!'), findsOneWidget);
-      expect(find.text('Welcome to DrapeAI'), findsOneWidget);
+      expect(find.text('Welcome to Sugatai'), findsOneWidget);
     });
   });
 }

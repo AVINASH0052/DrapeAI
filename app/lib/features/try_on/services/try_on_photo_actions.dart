@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +8,22 @@ import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../profile/providers/user_profile_provider.dart';
 import '../widgets/try_on_photo_guide_overlay.dart';
+
+String _friendlyUploadError(Object error) {
+  if (error is DioException) {
+    final data = error.response?.data;
+    final detail = data is Map ? data['detail']?.toString() : null;
+    if (error.response?.statusCode == 401) {
+      return detail ?? 'Session expired. Sign in again, then retry.';
+    }
+    if (detail != null && detail.isNotEmpty) return detail;
+    if (error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.connectionTimeout) {
+      return 'Could not reach the server. Check your connection and try again.';
+    }
+  }
+  return 'Upload failed. Please try again.';
+}
 
 /// Pick + upload a full-body try-on reference photo, with optional tips overlay.
 /// Returns true when a new photo was saved.
@@ -31,8 +48,8 @@ Future<bool> uploadTryOnPhotoInPlace(
 
   final picked = await ImagePicker().pickImage(
     source: source,
-    maxWidth: 1200,
-    imageQuality: 85,
+    maxWidth: 2400,
+    imageQuality: 92,
   );
   if (picked == null || !context.mounted) return false;
 
@@ -52,7 +69,7 @@ Future<bool> uploadTryOnPhotoInPlace(
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Upload failed: $e'),
+          content: Text(_friendlyUploadError(e)),
           backgroundColor: AppColors.red,
         ),
       );

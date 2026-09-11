@@ -68,6 +68,7 @@ async def get_pairings(
             FROM items
             WHERE user_id = $2
               AND id != $3
+              AND is_active = TRUE
               AND category = ANY($4::text[])
               AND embedding IS NOT NULL
             ORDER BY embedding <=> $1
@@ -82,6 +83,7 @@ async def get_pairings(
             FROM items
             WHERE user_id = $1
               AND id != $2
+              AND is_active = TRUE
               AND category = ANY($3::text[])
             LIMIT 30
             """,

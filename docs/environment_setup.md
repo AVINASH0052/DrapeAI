@@ -1,4 +1,4 @@
-# DrapeAI -- Environment Setup
+# Sugatai -- Environment Setup
 
 Dev machine setup from zero to running the full stack locally. macOS-focused (your machine), with Linux notes where different.
 
@@ -281,18 +281,17 @@ R2_PUBLIC_URL=http://localhost:8000/uploads
 # ── Firebase ─────────────────────────────────────
 FIREBASE_PROJECT_ID=drapeai-firebase
 
-# ── Weather ──────────────────────────────────────
-OPENWEATHER_API_KEY=
+# Weather: Open-Meteo (no API key)
 ```
 
 ### Where to get each key
 
 | Service | URL | Cost |
 |---|---|---|
-| OpenAI API | https://platform.openai.com/api-keys | Pay per use (~$0.03/image) |
+| OpenAI API | https://platform.openai.com/api-keys | Pay per use |
 | Firebase | https://console.firebase.google.com | Free |
 | Cloudflare R2 | https://dash.cloudflare.com > R2 | Free tier (10 GB) |
-| OpenWeatherMap | https://openweathermap.org/api | Free tier (1000 calls/day) |
+| Weather | Open-Meteo (built-in, no key) | Free |
 
 ---
 
@@ -301,14 +300,14 @@ OPENWEATHER_API_KEY=
 ### Terminal 1: Database
 
 ```bash
-cd drapeai
+cd Sugatai
 docker compose -f infra/docker-compose.dev.yml up
 ```
 
 ### Terminal 2: Backend
 
 ```bash
-cd drapeai/api
+cd Sugatai/api
 source .venv/bin/activate
 
 # Run migrations
@@ -328,7 +327,7 @@ uvicorn app.main:app --reload --port 8000
 ### Terminal 3: Flutter app
 
 ```bash
-cd drapeai/app
+cd Sugatai/app
 
 flutter pub get
 

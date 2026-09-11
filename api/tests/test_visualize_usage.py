@@ -134,7 +134,7 @@ async def test_stale_queued_job_marked_failed_on_poll(
     assert resp.status_code == 200
     body = resp.json()
     assert body["status"] == "failed"
-    assert "Timed out" in body["error"]
+    assert body["error"] == "try_on_failed"
 
 
 @pytest.mark.asyncio
@@ -162,7 +162,7 @@ async def test_failed_generation_refunds_quota(
     assert resp.status_code == 200
     body = resp.json()
     assert body["status"] == "failed"
-    assert "provider exploded" in (body["error"] or "")
+    assert body["error"] == "try_on_failed"
     # Failed jobs are excluded from the daily count → full quota remains
     assert body["limit"] == 3
     assert body["remaining"] == 3

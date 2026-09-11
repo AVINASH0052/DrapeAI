@@ -10,6 +10,7 @@ from fastapi import HTTPException
 
 from app.config import settings
 from app.services.storage import get_image_url
+from app.utils.redact import CLIENT_SAFE_TRYON_ERROR
 
 logger = logging.getLogger(__name__)
 
@@ -200,16 +201,19 @@ async def create_job(
     user_id: str,
     outfit_id: str | None = None,
     session_id: str | None = None,
+    *,
+    directives: str | None = None,
 ) -> dict:
     row = await conn.fetchrow(
         """
-        INSERT INTO try_on_jobs (user_id, outfit_id, session_id, status)
-        VALUES ($1, $2::uuid, $3::uuid, 'queued')
+        INSERT INTO try_on_jobs (user_id, outfit_id, session_id, status, directives)
+        VALUES ($1, $2::uuid, $3::uuid, 'queued', $4)
         RETURNING *
         """,
         user_id,
         outfit_id,
         session_id,
+        directives,
     )
     return dict(row)
 
@@ -290,7 +294,7 @@ def job_status_payload(job: dict) -> dict[str, Any]:
         "method": job.get("method"),
         "model": job.get("model"),
         "provider": job.get("provider"),
-        "error": job.get("error_message"),
+        "error": CLIENT_SAFE_TRYON_ERROR if job.get("error_message") else None,
         "preview_url": get_image_url(job["result_key"]) if job.get("result_key") else None,
         "cached": False,
     }
@@ -319,6 +323,29 @@ async def enqueue_visualize_job(job_id: str, user_id: str, outfit_id: str) -> bo
         return True
     except Exception as e:
         logger.warning(f"tryon: ARQ enqueue failed, will run inline: {e!r}")
+        return False
+
+
+async def enqueue_refine_job(job_id: str, user_id: str, outfit_id: str) -> bool:
+    """Enqueue ARQ refine task. Returns False if Redis/ARQ unavailable."""
+    try:
+        from arq import create_pool
+        from app.workers.worker import _parse_redis_url
+
+        redis = await create_pool(_parse_redis_url(fast_fail=True))
+        try:
+            await redis.enqueue_job(
+                "app.workers.tasks.process_try_on_refine",
+                str(job_id),
+                user_id,
+                outfit_id,
+                _job_id=f"tryon-refine:{job_id}",
+            )
+        finally:
+            await redis.close()
+        return True
+    except Exception as e:
+        logger.warning(f"tryon refine: ARQ enqueue failed, will run inline: {e!r}")
         return False
 
 
@@ -470,6 +497,106 @@ async def run_visualize_job(job_id: str, user_id: str, outfit_id: str) -> dict:
                     f"tryon: job {job_id} completed after already being "
                     "terminalized elsewhere (likely a stale-job timeout); "
                     "outfit preview was still saved"
+                )
+            else:
+                import json
+
+                from app.database.queries.notifications import create_notification
+
+                try:
+                    await create_notification(
+                        conn,
+                        user_id,
+                        title="Try-on ready",
+                        body="Your look is ready to view.",
+                        notif_type="try_on",
+                        data=json.dumps(
+                            {"screen": "fitting_room", "job_id": job_id}
+                        ),
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to create try-on notification for job %s", job_id
+                    )
+            job = await get_job(conn, job_id, user_id)
+            return job_status_payload(job or {})
+        except Exception as e:
+            refunded = await mark_failed(conn, job_id, str(e))
+            if refunded:
+                await refund_daily_count(user_id)
+            raise
+
+
+async def run_refine_job(job_id: str, user_id: str, outfit_id: str) -> dict:
+    """Execute preview refine for a job and update DB rows."""
+    from app.database.pool import get_pool
+    from app.services.outfit_visualizer import refine_outfit_preview
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await mark_processing(conn, job_id)
+        job = await get_job(conn, job_id, user_id)
+        if not job:
+            raise RuntimeError("Job not found")
+
+        message = (job.get("directives") or "").strip()
+        if not message:
+            await mark_failed(conn, job_id, "Missing refine instruction")
+            await refund_daily_count(user_id)
+            raise RuntimeError("Missing refine instruction")
+
+        row = await conn.fetchrow(
+            """
+            SELECT o.preview_image_key, u.try_on_photo_key,
+                   u.avatar_status, u.avatar_error
+            FROM outfits o
+            JOIN users u ON u.id = o.user_id
+            WHERE o.id = $1::uuid AND o.user_id = $2
+            """,
+            outfit_id,
+            user_id,
+        )
+        if not row:
+            await mark_failed(conn, job_id, "Outfit not found")
+            await refund_daily_count(user_id)
+            raise RuntimeError("Outfit not found")
+        if not row["preview_image_key"]:
+            await mark_failed(conn, job_id, "Generate a try-on preview before refining")
+            await refund_daily_count(user_id)
+            raise RuntimeError("Generate a try-on preview before refining")
+        if not row["try_on_photo_key"]:
+            await mark_failed(conn, job_id, "No try-on photo")
+            await refund_daily_count(user_id)
+            raise RuntimeError("No try-on photo")
+        if row["avatar_status"] not in (None, "ready"):
+            reason = row["avatar_error"] or "Use a clear, front-facing full-body photo."
+            await mark_failed(conn, job_id, reason)
+            await refund_daily_count(user_id)
+            raise RuntimeError(reason)
+
+        try:
+            viz = await refine_outfit_preview(user_id, outfit_id, message)
+            await conn.execute(
+                "UPDATE outfits SET preview_image_key = $1 WHERE id = $2::uuid",
+                viz.preview_key,
+                outfit_id,
+            )
+            provider = None
+            if viz.method.startswith("ai:"):
+                # ai:vertex:refine → vertex
+                parts = viz.method.split(":")
+                provider = parts[1] if len(parts) > 1 else None
+            won = await mark_completed(
+                conn,
+                job_id,
+                result_key=viz.preview_key,
+                method=viz.method,
+                provider=provider,
+                model=viz.model,
+            )
+            if not won:
+                logger.warning(
+                    f"tryon refine: job {job_id} completed after already terminal"
                 )
             job = await get_job(conn, job_id, user_id)
             return job_status_payload(job or {})

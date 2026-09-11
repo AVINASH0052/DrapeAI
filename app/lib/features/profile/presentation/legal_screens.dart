@@ -62,7 +62,7 @@ class PrivacyScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 24),
                     Text(
-                      'Last updated: July 2026',
+                      'Last updated: September 2026',
                       style: TextStyle(color: AppColors.ink3, fontSize: 12),
                     ),
                   ],
@@ -122,9 +122,9 @@ class TermsScreen extends StatelessWidget {
                           'No illegal content, harassment, or attempts to abuse AI systems. We may suspend accounts that violate these terms.',
                     ),
                     _LegalSection(
-                      title: 'Subscriptions (future)',
+                      title: 'Early access',
                       body:
-                          'Pro tier at ₹99/month when launched. Free tier: 50 items, 1 recommendation/day. Cancel anytime.',
+                          'Sugatai is in early access and is free for invited users. Paid plans are not offered yet. We will not charge you without a separate, explicit billing agreement.',
                     ),
                     _LegalSection(
                       title: 'Disclaimer',
@@ -137,7 +137,7 @@ class TermsScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 24),
                     Text(
-                      'Last updated: July 2026',
+                      'Last updated: September 2026',
                       style: TextStyle(color: AppColors.ink3, fontSize: 12),
                     ),
                   ],
